@@ -1,5 +1,5 @@
 -- ====================================================================
--- 《万象全书》多模态任务看板界面 (Dual & Single Hybrid View)
+-- 《万象全书》多模态任务看板界面 (Scrollable Dual & Single Hybrid View)
 -- ====================================================================
 
 local Screen = require "widgets/screen"
@@ -8,6 +8,7 @@ local Text = require "widgets/text"
 local Image = require "widgets/image"
 local TEMPLATES = require "widgets/redux/templates"
 local WriteableWidget = require "widgets/writeablewidget"
+local ScrollableList = require "widgets/scrollablelist"
 
 local AtlasBookUI = Class(Screen, function(self, owner)
     Screen._ctor(self, "AtlasBookUI")
@@ -15,10 +16,6 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.owner = owner
     self.layout_mode = "dual"    -- "dual" (双列并排) 或 "single" (单列聚焦)
     self.single_tab = "personal"  -- 单列模式下的子页: "personal" 或 "team"
-    
-    self.dual_personal_items = {}
-    self.dual_team_items = {}
-    self.single_task_items = {}
 
     -- 1. 根节点与屏幕居中自适应
     self.root = self:AddChild(Widget("root"))
@@ -68,8 +65,8 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     ))
     self.add_personal_btn:SetPosition(0, 150, 0)
 
-    self.dual_personal_list = self.left_col:AddChild(Widget("dual_personal_list"))
-    self.dual_personal_list:SetPosition(0, 0, 0)
+    self.dual_personal_list_root = self.left_col:AddChild(Widget("dual_personal_list_root"))
+    self.dual_personal_list_root:SetPosition(0, -20, 0)
 
     -- 右列：团队 (x = 175)
     self.right_col = self.dual_container:AddChild(Widget("right_col"))
@@ -87,8 +84,8 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     ))
     self.add_team_btn:SetPosition(0, 150, 0)
 
-    self.dual_team_list = self.right_col:AddChild(Widget("dual_team_list"))
-    self.dual_team_list:SetPosition(0, 0, 0)
+    self.dual_team_list_root = self.right_col:AddChild(Widget("dual_team_list_root"))
+    self.dual_team_list_root:SetPosition(0, -20, 0)
 
     -- ====================================================================
     -- 5. 模式 B：单列聚焦容器 (Single Container - 左右并排顶栏)
@@ -113,8 +110,8 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     ))
     self.single_add_btn:SetPosition(125, 155, 0)
 
-    self.single_task_list = self.single_container:AddChild(Widget("single_task_list"))
-    self.single_task_list:SetPosition(0, 0, 0)
+    self.single_task_list_root = self.single_container:AddChild(Widget("single_task_list_root"))
+    self.single_task_list_root:SetPosition(0, -20, 0)
 
     -- ====================================================================
     -- 6. 底部关闭按钮
@@ -256,89 +253,113 @@ function AtlasBookUI:RequestTaskSync()
     if rpc then SendModRPCToServer(rpc) end
 end
 
--- 绘制双列模式任务列表
+-- 绘制双列模式任务列表 (带鼠标滚轮滚动支持)
 function AtlasBookUI:UpdateDualTaskList()
-    if self.dual_personal_items then
-        for _, item in pairs(self.dual_personal_items) do
-            if item and item.Kill then item:Kill() end
-        end
+    if self.dual_personal_scroll then
+        self.dual_personal_scroll:Kill()
+        self.dual_personal_scroll = nil
     end
-    self.dual_personal_items = {}
 
-    if self.dual_team_items then
-        for _, item in pairs(self.dual_team_items) do
-            if item and item.Kill then item:Kill() end
-        end
+    if self.dual_team_scroll then
+        self.dual_team_scroll:Kill()
+        self.dual_team_scroll = nil
     end
-    self.dual_team_items = {}
 
     local client_data = _G.ATLAS_CLIENT_DATA or {}
     local personal_tasks = client_data.personal or {}
     local team_tasks = client_data.team or {}
 
-    -- 左列 (个人)
-    if self.dual_personal_list then
-        local y_offset = 95
-        for i, task_data in ipairs(personal_tasks) do
-            if i <= 6 then
-                local item = self:CreateDualTaskItem(task_data, false)
-                if item then
-                    item:SetPosition(0, y_offset, 0)
-                    self.dual_personal_list:AddChild(item)
-                    table.insert(self.dual_personal_items, item)
-                    y_offset = y_offset - 48
-                end
-            end
+    -- 构建个人任务项
+    local personal_widgets = {}
+    for _, task_data in ipairs(personal_tasks) do
+        local item = self:CreateDualTaskItem(task_data, false)
+        if item then
+            table.insert(personal_widgets, item)
         end
     end
 
-    -- 右列 (团队)
-    if self.dual_team_list then
-        local y_offset = 95
-        for i, task_data in ipairs(team_tasks) do
-            if i <= 6 then
-                local item = self:CreateDualTaskItem(task_data, true)
-                if item then
-                    item:SetPosition(0, y_offset, 0)
-                    self.dual_team_list:AddChild(item)
-                    table.insert(self.dual_team_items, item)
-                    y_offset = y_offset - 48
-                end
-            end
+    -- 构建团队任务项
+    local team_widgets = {}
+    for _, task_data in ipairs(team_tasks) do
+        local item = self:CreateDualTaskItem(task_data, true)
+        if item then
+            table.insert(team_widgets, item)
         end
+    end
+
+    -- 挂载左列滚动列表 (宽 310, 高 270, 单项高 44, 间距 4)
+    if self.dual_personal_list_root then
+        self.dual_personal_scroll = self.dual_personal_list_root:AddChild(ScrollableList(
+            personal_widgets,
+            310,
+            270,
+            44,
+            4,
+            nil,
+            nil,
+            155, -- widgetXOffset
+            nil,
+            nil,
+            10
+        ))
+    end
+
+    -- 挂载右列滚动列表 (宽 310, 高 270, 单项高 44, 间距 4)
+    if self.dual_team_list_root then
+        self.dual_team_scroll = self.dual_team_list_root:AddChild(ScrollableList(
+            team_widgets,
+            310,
+            270,
+            44,
+            4,
+            nil,
+            nil,
+            155, -- widgetXOffset
+            nil,
+            nil,
+            10
+        ))
     end
 end
 
--- 绘制单列模式任务列表 (全宽舒适排版)
+-- 绘制单列模式任务列表 (带鼠标滚轮滚动支持，超宽排版)
 function AtlasBookUI:UpdateSingleTaskList()
-    if self.single_task_items then
-        for _, item in pairs(self.single_task_items) do
-            if item and item.Kill then item:Kill() end
-        end
+    if self.single_scroll then
+        self.single_scroll:Kill()
+        self.single_scroll = nil
     end
-    self.single_task_items = {}
 
     local is_team = (self.single_tab == "team")
     local client_data = _G.ATLAS_CLIENT_DATA or {}
     local tasks = is_team and (client_data.team or {}) or (client_data.personal or {})
 
-    if self.single_task_list then
-        local y_offset = 95
-        for i, task_data in ipairs(tasks) do
-            if i <= 6 then
-                local item = self:CreateSingleTaskItem(task_data, is_team)
-                if item then
-                    item:SetPosition(0, y_offset, 0)
-                    self.single_task_list:AddChild(item)
-                    table.insert(self.single_task_items, item)
-                    y_offset = y_offset - 48
-                end
-            end
+    local single_widgets = {}
+    for _, task_data in ipairs(tasks) do
+        local item = self:CreateSingleTaskItem(task_data, is_team)
+        if item then
+            table.insert(single_widgets, item)
         end
+    end
+
+    -- 挂载单列滚动列表 (宽 560, 高 270, 单项高 44, 间距 4)
+    if self.single_task_list_root then
+        self.single_scroll = self.single_task_list_root:AddChild(ScrollableList(
+            single_widgets,
+            560,
+            270,
+            44,
+            4,
+            nil,
+            nil,
+            280, -- widgetXOffset
+            nil,
+            nil,
+            10
+        ))
     end
 end
 
--- 创建双列下的单条任务项
+-- 创建双列下的单条任务项 (居中布局设计)
 function AtlasBookUI:CreateDualTaskItem(task, is_team)
     local item = Widget("dual_task_item")
 
