@@ -26,8 +26,8 @@ Assets = {
 }
 
 -- 1. 基础字符串定义
-STRINGS.NAMES.ATLAS_BOOK = "★万象书 (双列任务版)★"
-STRINGS.RECIPE_DESC.ATLAS_BOOK = "协同生存与个人任务看板"
+STRINGS.NAMES.ATLAS_BOOK = "任务协同看板"
+STRINGS.RECIPE_DESC.ATLAS_BOOK = "任务与协同看板"
 STRINGS.INPUT_PROMPT = "输入任务内容:"
 STRINGS.CANCEL_BUTTON = "取消"
 STRINGS.CLEAR_BUTTON = "清空"
