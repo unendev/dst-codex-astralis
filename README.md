@@ -1,6 +1,6 @@
-# 📜 万象书 · 任务协同看板 (Codex Astralis)
+# 📜 任务协同看板 (Codex Astralis)
 
-![万象全书 Banner](https://helpfulcraft-blog.oss-cn-beijing.aliyuncs.com/20250824164415.png)
+![任务协同看板 Banner](./banner.jpg)
 
 > **Steam 创意工坊订阅地址**：[https://steamcommunity.com/sharedfiles/filedetails/?id=3555025039](https://steamcommunity.com/sharedfiles/filedetails/?id=3555025039)  
 > **作者**：哈基米 (unendev)  
