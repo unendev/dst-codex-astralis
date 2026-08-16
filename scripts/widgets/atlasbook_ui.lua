@@ -1,3 +1,7 @@
+-- ====================================================================
+-- 《万象全书》纯净双列任务看板界面 (Dual-Column Todo UI)
+-- ====================================================================
+
 local Screen = require "widgets/screen"
 local Widget = require "widgets/widget"
 local Text = require "widgets/text"
@@ -5,145 +9,101 @@ local Image = require "widgets/image"
 local TEMPLATES = require "widgets/redux/templates"
 local WriteableWidget = require "widgets/writeablewidget"
 
-local strings_module = (_G and _G.ATLAS_STRINGS_MODULE)
-if not (type(strings_module) == "table" and strings_module.GetGuideData) then
-    local req_mod = require("strings")
-    if type(req_mod) == "table" then
-        strings_module = req_mod
-    end
-end
-local GUIDE_DATA = (type(strings_module) == "table" and strings_module.GetGuideData and strings_module.GetGuideData()) or {}
-
--- 扁平化章节列表，用于翻页
-local FLAT_CHAPTERS = {}
-for section_id, section_data in pairs(GUIDE_DATA) do
-    if section_data.is_section and section_data.children then
-        for chapter_id, chapter_data in pairs(section_data.children) do
-            if not chapter_data.is_section then
-                table.insert(FLAT_CHAPTERS, { id = chapter_id, section_id = section_id })
-            end
-        end
-    end
-end
-
 local AtlasBookUI = Class(Screen, function(self, owner)
     Screen._ctor(self, "AtlasBookUI")
 
-    self.owner = owner or ThePlayer
-    self.expanded_sections = {}
-    self.current_view = "guide"
-    self.task_items = {}
+    self.owner = owner
+    self.personal_task_items = {}
+    self.team_task_items = {}
 
+    -- 1. 根节点与屏幕居中适配
     self.root = self:AddChild(Widget("root"))
     self.root:SetVAnchor(ANCHOR_MIDDLE)
     self.root:SetHAnchor(ANCHOR_MIDDLE)
-    self.root:SetPosition(0, 0, 0)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
 
-    -- 主窗口面板
-    self.panel = self.root:AddChild(TEMPLATES.RectangleWindow(900, 600, STRINGS.WINDOW_TITLE or "生存指南"))
-    self.panel:SetBackgroundTint(unpack(UICOLOURS.BROWN_DARK))
+    -- 2. 羊皮纸主背景底板 (宽 960, 高 650)
+    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(440, 560, STRINGS.WINDOW_TITLE or "万象书 · 任务与协同看板", nil, nil, ""))
+    self.bg:SetPosition(0, 0, 0)
 
-    -- 关闭按钮
-    self.close_button = self.panel:AddChild(TEMPLATES.StandardButton(function() self:Close() end, STRINGS.CLOSE_BUTTON or "关闭", {100, 50}))
-    self.close_button:SetPosition(900/2 - 50, 600/2 - 25, 0)
+    -- 3. 顶部主标题
+    self.title = self.root:AddChild(Text(HEADERFONT, 34))
+    self.title:SetPosition(0, 245, 0)
+    self.title:SetColour(0.3, 0.2, 0.1, 1)
+    self.title:SetString(STRINGS.WINDOW_TITLE or "万象书 · 任务与协同看板")
 
-    -- 顶部 Tab 切换
-    self.tabs_root = self.panel:AddChild(Widget("TABS_ROOT"))
-    self.tabs_root:SetPosition(0, 260, 0)
+    -- 4. 左右双列分栏容器
+    -- ==================== 左列：个人私密计划 (x = -225) ====================
+    self.left_col = self.root:AddChild(Widget("left_col"))
+    self.left_col:SetPosition(-225, 0, 0)
 
-    self.guide_tab_button = self.tabs_root:AddChild(TEMPLATES.StandardButton(function() self:SetView("guide") end, STRINGS.GUIDE_TAB or "静态攻略", {150, 50}))
-    self.guide_tab_button:SetPosition(-80, 0, 0)
+    self.personal_header = self.left_col:AddChild(Text(CHATFONT, 24))
+    self.personal_header:SetPosition(0, 200, 0)
+    self.personal_header:SetColour(0.2, 0.4, 0.7, 1)
+    self.personal_header:SetString(STRINGS.PERSONAL_HEADER or "【 个人私密计划 】")
 
-    self.planner_tab_button = self.tabs_root:AddChild(TEMPLATES.StandardButton(function() self:SetView("planner") end, STRINGS.PLANNER_TAB or "团队计划", {150, 50}))
-    self.planner_tab_button:SetPosition(80, 0, 0)
-
-    -- 两个视图容器
-    self.guide_view = self.panel:AddChild(Widget("GUIDE_VIEW"))
-    self.planner_view = self.panel:AddChild(Widget("PLANNER_VIEW"))
-
-    -- ================================================================
-    -- 1. 静态攻略视图 (Guide View)
-    -- ================================================================
-    self.menu_root = self.guide_view:AddChild(Widget("MENU_ROOT"))
-    self.menu_root:SetPosition(-350, 0, 0)
-
-    self.menu_scroll_root = self.menu_root:AddChild(Widget("MENU_SCROLL_ROOT"))
-    self.menu_scroll_root:SetPosition(0, 0, 0)
-
-    self.content_root = self.guide_view:AddChild(Widget("CONTENT_ROOT"))
-    self.content_root:SetPosition(150, 0, 0)
-
-    self.content_title = self.content_root:AddChild(Text(DEFAULTFONT, 40))
-    self.content_title:SetPosition(0, 150, 0)
-    self.content_title:SetColour(1, 0.9, 0.5, 1)
-
-    self.content_text = self.content_root:AddChild(Text(DEFAULTFONT, 30))
-    self.content_text:SetPosition(0, -20, 0)
-    self.content_text:SetColour(1, 0.95, 0.8, 1)
-    self.content_text:SetVAlign(ANCHOR_TOP)
-    self.content_text:SetHAlign(ANCHOR_LEFT)
-    self.content_text:SetRegionSize(400, 300)
-
-    self:CreateMenuButtons()
-
-    self.prev_button = self.guide_view:AddChild(TEMPLATES.StandardButton(function() self:OnPrevPage() end, STRINGS.PREV_PAGE or "<", {50, 50}))
-    self.prev_button:SetPosition(-100, -260, 0)
-
-    self.next_button = self.guide_view:AddChild(TEMPLATES.StandardButton(function() self:OnNextPage() end, STRINGS.NEXT_PAGE or ">", {50, 50}))
-    self.next_button:SetPosition(100, -260, 0)
-
-    -- ================================================================
-    -- 2. 任务计划视图 (Planner View)
-    -- ================================================================
-    self.add_task_button = self.planner_view:AddChild(TEMPLATES.StandardButton(
-        function() self:ShowSignInputModal() end,
-        STRINGS.ADD_TASK_BUTTON or "添加任务", {120, 50}
+    self.add_personal_btn = self.left_col:AddChild(TEMPLATES.StandardButton(
+        function() self:ShowSignInputModal(false) end,
+        STRINGS.ADD_PERSONAL_BUTTON or "+ 添加个人任务",
+        { 190, 42 }
     ))
-    self.add_task_button:SetPosition(0, -250, 0)
+    self.add_personal_btn:SetPosition(0, 155, 0)
 
-    self.tasks_panel = self.planner_view:AddChild(Widget("TASKS_PANEL"))
-    self.tasks_panel:SetPosition(0, 50, 0)
+    self.personal_list = self.left_col:AddChild(Widget("personal_list"))
+    self.personal_list:SetPosition(0, 0, 0)
 
-    self.task_list = self.tasks_panel:AddChild(Widget("TASK_LIST"))
-    self.task_list:SetPosition(0, 0, 0)
+    -- ==================== 中间分割装饰线 ====================
+    self.divider = self.root:AddChild(Image("images/global.xml", "square.tex"))
+    self.divider:SetPosition(0, 0, 0)
+    self.divider:SetScale(0.003, 0.75, 1)
+    self.divider:SetTint(0.6, 0.5, 0.4, 0.5)
 
-    -- 初始化恢复上次阅读章节
-    local last_page_id = self.owner and self.owner.atlas_book_data and self.owner.atlas_book_data.last_page
-    if last_page_id then
-        for _, chapter in ipairs(FLAT_CHAPTERS) do
-            if chapter.id == last_page_id then
-                self.expanded_sections[chapter.section_id] = true
-                self:CreateMenuButtons()
-                self:SetChapter(last_page_id)
-                break
-            end
-        end
-    else
-        if #FLAT_CHAPTERS > 0 then
-            self:SetChapter(FLAT_CHAPTERS[1].id)
-        end
-    end
+    -- ==================== 右列：团队协同目标 (x = 225) ====================
+    self.right_col = self.root:AddChild(Widget("right_col"))
+    self.right_col:SetPosition(225, 0, 0)
 
-    self:SetView("guide")
+    self.team_header = self.right_col:AddChild(Text(CHATFONT, 24))
+    self.team_header:SetPosition(0, 200, 0)
+    self.team_header:SetColour(0.7, 0.3, 0.1, 1)
+    self.team_header:SetString(STRINGS.TEAM_HEADER or "【 团队协同目标 】")
+
+    self.add_team_btn = self.right_col:AddChild(TEMPLATES.StandardButton(
+        function() self:ShowSignInputModal(true) end,
+        STRINGS.ADD_TEAM_BUTTON or "+ 添加团队目标",
+        { 190, 42 }
+    ))
+    self.add_team_btn:SetPosition(0, 155, 0)
+
+    self.team_list = self.right_col:AddChild(Widget("team_list"))
+    self.team_list:SetPosition(0, 0, 0)
+
+    -- ==================== 底部关闭按钮 ====================
+    self.close_button = self.root:AddChild(TEMPLATES.StandardButton(
+        function() self:Close() end,
+        STRINGS.CLOSE_BUTTON or "关闭",
+        { 140, 45 }
+    ))
+    self.close_button:SetPosition(0, -260, 0)
+
+    -- 5. 初始化与数据监听
     self:RequestTaskSync()
+    self:UpdateTaskList()
 
-    -- 监听任务列表同步事件
     self.inst:ListenForEvent("atlas_todolist_updated", function()
         self:UpdateTaskList()
     end, TheWorld)
 end)
 
--- 纯客户端呼出官方 WriteableWidget 告示牌输入弹窗
-function AtlasBookUI:ShowSignInputModal()
+-- 呼出官方木牌输入弹窗
+function AtlasBookUI:ShowSignInputModal(is_team)
     local dummy_inst = CreateEntity()
     local player = self.owner or ThePlayer
     local config = {
-        prompt = STRINGS.INPUT_PROMPT or "输入任务内容:",
+        prompt = (is_team and "【团队目标】" or "【个人计划】") .. " 输入内容:",
         animbank = "ui_board_5x3",
         animbuild = "ui_board_5x3",
         menuoffset = Vector3(6, -70, 0),
-        maxcharacters = 100,
+        maxcharacters = 80,
         cancelbtn = {
             text = STRINGS.CANCEL_BUTTON or "取消",
             control = CONTROL_CANCEL,
@@ -169,7 +129,7 @@ function AtlasBookUI:ShowSignInputModal()
             cb = function(inst, doer, widget)
                 local text = widget and widget.GetText and widget:GetText()
                 if text and text:gsub("%s+", "") ~= "" then
-                    self:AddTask(text)
+                    self:AddTask(is_team, text)
                 end
                 if widget and widget.Close then
                     widget:Close()
@@ -189,24 +149,25 @@ function AtlasBookUI:ShowSignInputModal()
     end
 end
 
-function AtlasBookUI:AddTask(text)
+-- 网络操作
+function AtlasBookUI:AddTask(is_team, text)
     local rpc = GetModRPC("atlas_book", "add_task")
     if rpc then
-        SendModRPCToServer(rpc, text)
+        SendModRPCToServer(rpc, is_team, text)
     end
 end
 
-function AtlasBookUI:ToggleTask(id, is_completed)
+function AtlasBookUI:ToggleTask(is_team, id, is_completed)
     local rpc = GetModRPC("atlas_book", "toggle_task")
     if rpc then
-        SendModRPCToServer(rpc, id, is_completed)
+        SendModRPCToServer(rpc, is_team, id, is_completed)
     end
 end
 
-function AtlasBookUI:DeleteTask(id)
+function AtlasBookUI:DeleteTask(is_team, id)
     local rpc = GetModRPC("atlas_book", "delete_task")
     if rpc then
-        SendModRPCToServer(rpc, id)
+        SendModRPCToServer(rpc, is_team, id)
     end
 end
 
@@ -217,205 +178,126 @@ function AtlasBookUI:RequestTaskSync()
     end
 end
 
-function AtlasBookUI:SetView(view_name)
-    self.current_view = view_name
-    if view_name == "guide" then
-        self.guide_view:Show()
-        self.planner_view:Hide()
-        self.guide_tab_button:SetTextColour(0.8, 0, 0, 1)
-        self.planner_tab_button:SetTextColour(0, 0, 0, 1)
-    elseif view_name == "planner" then
-        self.guide_view:Hide()
-        self.planner_view:Show()
-        self.guide_tab_button:SetTextColour(0, 0, 0, 1)
-        self.planner_tab_button:SetTextColour(0.8, 0, 0, 1)
-        self:RequestTaskSync()
-        self:UpdateTaskList()
-    end
-end
-
+-- 局部重绘双列任务列表
 function AtlasBookUI:UpdateTaskList()
-    if self.task_items then
-        for _, item in pairs(self.task_items) do
+    -- 清理个人列
+    if self.personal_task_items then
+        for _, item in pairs(self.personal_task_items) do
             if item and item.Kill then item:Kill() end
         end
     end
-    self.task_items = {}
-    if not self.task_list then return end
+    self.personal_task_items = {}
 
-    local tasks = (_G.ATLAS_CLIENT_DATA and _G.ATLAS_CLIENT_DATA.tasks) or {}
-
-    local y_offset = 200
-    for i, task_data in ipairs(tasks) do
-        local task_item = self:CreateTaskItem(task_data)
-        if task_item then
-            task_item:SetPosition(0, y_offset, 0)
-            self.task_list:AddChild(task_item)
-            table.insert(self.task_items, task_item)
-            y_offset = y_offset - 60
+    -- 清理团队列
+    if self.team_task_items then
+        for _, item in pairs(self.team_task_items) do
+            if item and item.Kill then item:Kill() end
         end
     end
-end
+    self.team_task_items = {}
 
-function AtlasBookUI:CreateTaskItem(task)
-    if not task or not task.id or not task.text then return nil end
+    local client_data = _G.ATLAS_CLIENT_DATA or {}
+    local personal_tasks = client_data.personal or {}
+    local team_tasks = client_data.team or {}
 
-    local item = Widget("task_item_" .. task.id)
-
-    -- 状态切换按钮
-    local status_button = item:AddChild(TEMPLATES.StandardButton(
-        function() self:ToggleTask(task.id, not task.completed) end,
-        task.completed and (STRINGS.COMPLETED_TASK or "✓") or (STRINGS.PENDING_TASK or "□"),
-        {40, 40}
-    ))
-    status_button:SetPosition(-400, 0, 0)
-
-    -- 任务内容文本
-    local task_text = item:AddChild(Text(DEFAULTFONT, 32))
-    task_text:SetPosition(-180, 0, 0)
-    task_text:SetRegionSize(400, 50)
-    task_text:SetHAlign(ANCHOR_LEFT)
-    task_text:SetString(task.text)
-
-    if task.completed then
-        task_text:SetColour(0.5, 0.5, 0.5, 1)
-    else
-        task_text:SetColour(1, 0.95, 0.8, 1)
+    -- 绘制左列（个人任务）
+    if self.personal_list then
+        local y_offset = 105
+        for i, task_data in ipairs(personal_tasks) do
+            if i <= 6 then -- 单列展示最多 6 条
+                local task_item = self:CreateTaskItem(task_data, false)
+                if task_item then
+                    task_item:SetPosition(0, y_offset, 0)
+                    self.personal_list:AddChild(task_item)
+                    table.insert(self.personal_task_items, task_item)
+                    y_offset = y_offset - 50
+                end
+            end
+        end
     end
 
-    -- 删除按钮
-    local delete_button = item:AddChild(TEMPLATES.StandardButton(
-        function() self:DeleteTask(task.id) end,
-        STRINGS.DELETE_BUTTON or "删除",
-        {80, 40}
-    ))
-    delete_button:SetPosition(250, 0, 0)
-
-    return item
-end
-
--- ================================================================
--- 静态攻略目录与翻页控制
--- ================================================================
-function AtlasBookUI:CreateMenuButtons()
-    if self.menu_buttons then
-        for _, button in pairs(self.menu_buttons) do button:Kill() end
-    end
-    self.menu_buttons = {}
-    local y_offset = 250
-
-    for section_id, section_data in pairs(GUIDE_DATA) do
-        if section_data.is_section then
-            local section_button = self.menu_scroll_root:AddChild(TEMPLATES.StandardButton(
-                function() self:ToggleSection(section_id) end,
-                (self.expanded_sections[section_id] and "v " or "> ") .. section_data.title,
-                {220, 50}
-            ))
-            section_button:SetPosition(0, y_offset, 0)
-            section_button:SetTextColour(0, 0, 0, 1)
-            section_button:SetTextSize(30)
-            self.menu_buttons[section_id] = section_button
-            y_offset = y_offset - 55
-
-            if self.expanded_sections[section_id] and section_data.children then
-                for chapter_id, chapter_data in pairs(section_data.children) do
-                    if not chapter_data.is_section then
-                        local chapter_button = self.menu_scroll_root:AddChild(TEMPLATES.StandardButton(
-                            function() self:SetChapter(chapter_id) end,
-                            "   " .. chapter_data.title,
-                            {200, 45}
-                        ))
-                        chapter_button:SetPosition(10, y_offset, 0)
-                        chapter_button:SetTextColour(0, 0, 0, 1)
-                        chapter_button:SetTextSize(26)
-                        self.menu_buttons[chapter_id] = chapter_button
-                        y_offset = y_offset - 50
-                    end
+    -- 绘制右列（团队任务）
+    if self.team_list then
+        local y_offset = 105
+        for i, task_data in ipairs(team_tasks) do
+            if i <= 6 then -- 单列展示最多 6 条
+                local task_item = self:CreateTaskItem(task_data, true)
+                if task_item then
+                    task_item:SetPosition(0, y_offset, 0)
+                    self.team_list:AddChild(task_item)
+                    table.insert(self.team_task_items, task_item)
+                    y_offset = y_offset - 50
                 end
             end
         end
     end
 end
 
-function AtlasBookUI:ToggleSection(section_id)
-    self.expanded_sections[section_id] = not self.expanded_sections[section_id]
-    self:CreateMenuButtons()
-end
+-- 创建单行任务条目
+function AtlasBookUI:CreateTaskItem(task, is_team)
+    local item = Widget("task_item")
 
-function AtlasBookUI:SetChapter(chapter_id)
-    local chapter_data
-    for sid, section in pairs(GUIDE_DATA) do
-        if section.is_section and section.children and section.children[chapter_id] then
-            chapter_data = section.children[chapter_id]
-            break
-        end
+    -- 1. 单行底板
+    local bg = item:AddChild(Image("images/global.xml", "square.tex"))
+    bg:SetPosition(0, 0, 0)
+    bg:SetScale(0.40, 0.052, 1)
+    if is_team then
+        bg:SetTint(0.95, 0.90, 0.82, 0.6)
+    else
+        bg:SetTint(0.88, 0.92, 0.98, 0.6)
     end
 
-    if chapter_data then
-        self.current_chapter_id = chapter_id
-        self.content_title:SetString(chapter_data.title)
-        self.content_text:SetString(chapter_data.text)
+    -- 2. 复选框按钮 [✓] 或 [□]
+    local checkbox_text = task.completed and (STRINGS.COMPLETED_TASK or "✓") or (STRINGS.PENDING_TASK or "□")
+    local checkbox = item:AddChild(TEMPLATES.StandardButton(
+        function()
+            self:ToggleTask(is_team, task.id, not task.completed)
+        end,
+        checkbox_text,
+        { 38, 38 }
+    ))
+    checkbox:SetPosition(-150, 0, 0)
 
-        for id, button in pairs(self.menu_buttons) do
-            if id == chapter_id then
-                button:SetTextColour(0.8, 0, 0, 1)
-            else
-                button:SetTextColour(0, 0, 0, 1)
-            end
-        end
+    -- 3. 任务内容文本
+    local text = item:AddChild(Text(CHATFONT, 20))
+    text:SetPosition(0, 0, 0)
+    text:SetRegionSize(240, 40)
+    text:SetHAlign(ANCHOR_LEFT)
+    text:SetVAlign(ANCHOR_MIDDLE)
 
-        if self.owner and self.owner.atlas_book_data then
-            self.owner.atlas_book_data.last_page = chapter_id
-        end
-        self:UpdatePageButtons()
+    local display_text = task.text or ""
+    if #display_text > 24 then
+        display_text = display_text:sub(1, 24) .. "..."
     end
-end
+    text:SetString(display_text)
 
-function AtlasBookUI:OnPrevPage()
-    local current_index
-    for i, chapter in ipairs(FLAT_CHAPTERS) do
-        if chapter.id == self.current_chapter_id then current_index = i break end
+    if task.completed then
+        text:SetColour(0.5, 0.5, 0.5, 1)
+    else
+        text:SetColour(0.1, 0.1, 0.1, 1)
     end
-    if current_index and current_index > 1 then
-        local prev = FLAT_CHAPTERS[current_index - 1]
-        self.expanded_sections[prev.section_id] = true
-        self:CreateMenuButtons()
-        self:SetChapter(prev.id)
-    end
-end
 
-function AtlasBookUI:OnNextPage()
-    local current_index
-    for i, chapter in ipairs(FLAT_CHAPTERS) do
-        if chapter.id == self.current_chapter_id then current_index = i break end
-    end
-    if current_index and current_index < #FLAT_CHAPTERS then
-        local nxt = FLAT_CHAPTERS[current_index + 1]
-        self.expanded_sections[nxt.section_id] = true
-        self:CreateMenuButtons()
-        self:SetChapter(nxt.id)
-    end
-end
+    -- 4. 删除按钮 [✕]
+    local delete_btn = item:AddChild(TEMPLATES.StandardButton(
+        function()
+            self:DeleteTask(is_team, task.id)
+        end,
+        STRINGS.DELETE_BUTTON or "✕",
+        { 34, 34 }
+    ))
+    delete_btn:SetPosition(160, 0, 0)
 
-function AtlasBookUI:UpdatePageButtons()
-    local current_index
-    for i, chapter in ipairs(FLAT_CHAPTERS) do
-        if chapter.id == self.current_chapter_id then current_index = i break end
-    end
-    if current_index == 1 then self.prev_button:Disable() else self.prev_button:Enable() end
-    if current_index == #FLAT_CHAPTERS then self.next_button:Disable() else self.next_button:Enable() end
+    return item
 end
 
 function AtlasBookUI:Close()
-    if self.owner and self.owner.atlas_book_data and self.current_chapter_id then
-        self.owner.atlas_book_data.last_page = self.current_chapter_id
-    end
     TheFrontEnd:PopScreen(self)
 end
 
 function AtlasBookUI:OnControl(control, down)
     if AtlasBookUI._base.OnControl(self, control, down) then return true end
-    if not down and control == CONTROL_CANCEL then
+
+    if not down and (control == CONTROL_CANCEL or control == CONTROL_OPEN_DEBUG_CONSOLE) then
         self:Close()
         return true
     end
