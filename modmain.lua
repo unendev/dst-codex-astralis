@@ -24,7 +24,8 @@ Assets = {
     Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
 
-RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/atlas_book.xml"), "atlas_book.tex")
+RegisterInventoryItemAtlas("images/inventoryimages/atlas_book.xml", "atlas_book.tex")
+RegisterInventoryItemAtlas("images/inventoryimages/atlas_book.xml", "atlas_book")
 
 -- 1. 基础字符串定义
 STRINGS.NAMES.ATLAS_BOOK = "任务协同看板"
@@ -282,6 +283,19 @@ GLOBAL.c_test_atlas = function()
     print("[ATLAS_AUTOTEST] ========================================================")
     print("[ATLAS_AUTOTEST] 🚀 开始执行《万象全书》多玩家联机端到端全真自动化压测")
     print("[ATLAS_AUTOTEST] ========================================================")
+
+    -- 阶段 0: 纹理与图集注册有效性断言 (Texture & Atlas Validity)
+    local atlas_path = GLOBAL.resolvefilepath("images/inventoryimages/atlas_book.xml")
+    local atlas_lookup = GLOBAL.GetInventoryItemAtlas("atlas_book.tex")
+    local contains_tex = GLOBAL.TheSim and GLOBAL.TheSim.AtlasContains and GLOBAL.TheSim:AtlasContains(atlas_path, "atlas_book.tex")
+    print("[ATLAS_AUTOTEST] 🔍 Atlas Path:", atlas_path)
+    print("[ATLAS_AUTOTEST] 🔍 Atlas Lookup Result:", atlas_lookup)
+    print("[ATLAS_AUTOTEST] 🔍 TheSim:AtlasContains:", tostring(contains_tex))
+    if atlas_lookup and contains_tex then
+        print("[ATLAS_AUTOTEST] [PASS] 0. 物品贴图与图集注册: 100% 成功有效")
+    else
+        print("[ATLAS_AUTOTEST] [FAIL] 0. 物品贴图或图集注册失败! AtlasLookup=" .. tostring(atlas_lookup) .. " Contains=" .. tostring(contains_tex))
+    end
 
     -- 阶段 1: JSON 协议编解码
     local test_json = json.encode({
