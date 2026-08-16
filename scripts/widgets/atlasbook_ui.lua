@@ -31,6 +31,13 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.bg:SetScale(1.0, 1.0)
     self.bg:SetPosition(0, 0, 0)
 
+    -- 将 "看 板" 标题精准嵌入顶部金色木牌匾中
+    if self.bg.title then
+        self.bg.title:SetPosition(0, -26, 0)
+        self.bg.title:SetSize(30)
+        self.bg.title:SetColour(0.98, 0.92, 0.70, 1)
+    end
+
     -- 3. 右上角模式切换开关（极简"切 换"二字）
     self.mode_toggle_btn = self.root:AddChild(TEMPLATES.StandardButton(
         function() self:ToggleLayoutMode() end,
