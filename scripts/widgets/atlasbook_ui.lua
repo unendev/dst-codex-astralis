@@ -1,5 +1,5 @@
 -- ====================================================================
--- 《万象全书》双页复古手札看板界面 (Twin Parchment Codex UI)
+-- 《万象全书》纯净双列任务看板界面 (Dual-Column Todo UI)
 -- ====================================================================
 
 local Screen = require "widgets/screen"
@@ -22,43 +22,43 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.root:SetHAnchor(ANCHOR_MIDDLE)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
 
-    -- 2. 官方精美复古羊皮纸外框 (宽 880, 高 580)
-    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(440, 520, STRINGS.WINDOW_TITLE or "★ 万象书 · 任务与协同看板 ★", nil, nil, ""))
+    -- 2. 官方精美复古羊皮纸外框 (宽 820, 高 560)
+    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(410, 520, STRINGS.WINDOW_TITLE or "看 板", nil, nil, ""))
     self.bg:SetPosition(0, 0, 0)
 
-    -- 3. 左右双列分栏容器 (精确坐标规划，杜绝边缘溢出)
-    -- ==================== 左列：个人私密手札 (x = -205) ====================
+    -- 3. 左右双列分栏容器 (精细坐标，完全收束在内框中)
+    -- ==================== 左列：个人 (x = -175) ====================
     self.left_col = self.root:AddChild(Widget("left_col"))
-    self.left_col:SetPosition(-205, 0, 0)
+    self.left_col:SetPosition(-175, 0, 0)
 
-    self.personal_header = self.left_col:AddChild(Text(CHATFONT, 23))
+    self.personal_header = self.left_col:AddChild(Text(HEADERFONT, 28))
     self.personal_header:SetPosition(0, 195, 0)
     self.personal_header:SetColour(0.35, 0.65, 0.95, 1) -- 晨曦蓝
-    self.personal_header:SetString(STRINGS.PERSONAL_HEADER or "📜 【 个人私密计划 】")
+    self.personal_header:SetString(STRINGS.PERSONAL_HEADER or "个 人")
 
     self.add_personal_btn = self.left_col:AddChild(TEMPLATES.StandardButton(
         function() self:ShowSignInputModal(false) end,
         STRINGS.ADD_PERSONAL_BUTTON or "+ 添加个人任务",
-        { 175, 38 }
+        { 160, 38 }
     ))
     self.add_personal_btn:SetPosition(0, 150, 0)
 
     self.personal_list = self.left_col:AddChild(Widget("personal_list"))
     self.personal_list:SetPosition(0, 0, 0)
 
-    -- ==================== 右列：团队协同公约 (x = 205) ====================
+    -- ==================== 右列：团队 (x = 175) ====================
     self.right_col = self.root:AddChild(Widget("right_col"))
-    self.right_col:SetPosition(205, 0, 0)
+    self.right_col:SetPosition(175, 0, 0)
 
-    self.team_header = self.right_col:AddChild(Text(CHATFONT, 23))
+    self.team_header = self.right_col:AddChild(Text(HEADERFONT, 28))
     self.team_header:SetPosition(0, 195, 0)
     self.team_header:SetColour(0.95, 0.70, 0.30, 1) -- 烈阳金
-    self.team_header:SetString(STRINGS.TEAM_HEADER or "⚔️ 【 团队协同目标 】")
+    self.team_header:SetString(STRINGS.TEAM_HEADER or "团 队")
 
     self.add_team_btn = self.right_col:AddChild(TEMPLATES.StandardButton(
         function() self:ShowSignInputModal(true) end,
         STRINGS.ADD_TEAM_BUTTON or "+ 添加团队目标",
-        { 175, 38 }
+        { 160, 38 }
     ))
     self.add_team_btn:SetPosition(0, 150, 0)
 
@@ -87,7 +87,7 @@ function AtlasBookUI:ShowSignInputModal(is_team)
     local dummy_inst = CreateEntity()
     local player = self.owner or ThePlayer
     local config = {
-        prompt = (is_team and "【团队目标】" or "【个人计划】") .. " 输入内容:",
+        prompt = (is_team and "【团队】" or "【个人】") .. " 输入内容:",
         animbank = "ui_board_5x3",
         animbuild = "ui_board_5x3",
         menuoffset = Vector3(6, -70, 0),
@@ -166,7 +166,7 @@ function AtlasBookUI:RequestTaskSync()
     end
 end
 
--- 局部重绘双列任务列表 (精确计算间距与排版)
+-- 局部重绘双列任务列表
 function AtlasBookUI:UpdateTaskList()
     -- 清理个人列
     if self.personal_task_items then
@@ -188,7 +188,7 @@ function AtlasBookUI:UpdateTaskList()
     local personal_tasks = client_data.personal or {}
     local team_tasks = client_data.team or {}
 
-    -- 绘制左列（个人任务：最多显示 6 条，纵向间距紧凑优雅）
+    -- 绘制左列（个人任务：最多显示 6 条）
     if self.personal_list then
         local y_offset = 95
         for i, task_data in ipairs(personal_tasks) do
@@ -221,12 +221,12 @@ function AtlasBookUI:UpdateTaskList()
     end
 end
 
--- 创建单行精美任务条目 (完美适配标准字符集，杜绝方块与乱码)
+-- 创建单行任务条目
 function AtlasBookUI:CreateTaskItem(task, is_team)
     local item = Widget("task_item")
 
-    -- 1. 复选框按钮 [ ✔ ] 或 [   ]
-    local checkbox_text = task.completed and (STRINGS.COMPLETED_TASK or "✔") or (STRINGS.PENDING_TASK or " ")
+    -- 1. 复选框按钮 [ √ ] 或 [   ]（使用最标准的中文根号对勾 √，100% 不会变问号）
+    local checkbox_text = task.completed and (STRINGS.COMPLETED_TASK or "√") or (STRINGS.PENDING_TASK or "")
     local checkbox = item:AddChild(TEMPLATES.StandardButton(
         function()
             self:ToggleTask(is_team, task.id, not task.completed)
@@ -234,18 +234,18 @@ function AtlasBookUI:CreateTaskItem(task, is_team)
         checkbox_text,
         { 34, 34 }
     ))
-    checkbox:SetPosition(-150, 0, 0)
+    checkbox:SetPosition(-125, 0, 0)
 
-    -- 2. 任务文字内容 (明亮高对比度，超长优雅截断)
+    -- 2. 任务文字内容
     local text = item:AddChild(Text(CHATFONT, 20))
     text:SetPosition(-5, 0, 0)
-    text:SetRegionSize(220, 36)
+    text:SetRegionSize(185, 36)
     text:SetHAlign(ANCHOR_LEFT)
     text:SetVAlign(ANCHOR_MIDDLE)
 
     local display_text = task.text or ""
-    if #display_text > 24 then
-        display_text = display_text:sub(1, 24) .. "..."
+    if #display_text > 20 then
+        display_text = display_text:sub(1, 20) .. "..."
     end
     text:SetString(display_text)
 
@@ -259,7 +259,7 @@ function AtlasBookUI:CreateTaskItem(task, is_team)
         end
     end
 
-    -- 3. 删除按钮 [ X ] (标准 ASCII 红色大写 X，100% 兼容所有语言字库)
+    -- 3. 删除按钮 [ X ] (标准 ASCII 红色 X)
     local delete_btn = item:AddChild(TEMPLATES.StandardButton(
         function()
             self:DeleteTask(is_team, task.id)
@@ -267,7 +267,7 @@ function AtlasBookUI:CreateTaskItem(task, is_team)
         STRINGS.DELETE_BUTTON or "X",
         { 30, 30 }
     ))
-    delete_btn:SetPosition(145, 0, 0)
+    delete_btn:SetPosition(125, 0, 0)
 
     return item
 end
