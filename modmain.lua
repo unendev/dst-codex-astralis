@@ -129,12 +129,10 @@ AddClassPostConstruct("screens/playerhud", function(self)
     end
 end)
 
--- 5. 服务端组件注入与出生赠送
-AddSimPostInit(function()
-    if GLOBAL.TheWorld and GLOBAL.TheWorld.ismastersim then
-        if not GLOBAL.TheWorld.components.atlas_todolist then
-            GLOBAL.TheWorld:AddComponent("atlas_todolist")
-        end
+-- 5. 服务端组件注入与出生赠送（使用 world 预制体挂载，确保 OnLoad 读盘生效）
+AddPrefabPostInit("world", function(inst)
+    if inst.ismastersim and not inst.components.atlas_todolist then
+        inst:AddComponent("atlas_todolist")
     end
 end)
 

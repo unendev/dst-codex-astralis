@@ -1,5 +1,5 @@
 -- ====================================================================
--- 《万象全书》纯净双列任务看板界面 (Dual-Column Todo UI)
+-- 《万象全书》纯净双列任务看板界面 (Dual-Column Todo UI - Wide Edition)
 -- ====================================================================
 
 local Screen = require "widgets/screen"
@@ -22,14 +22,14 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.root:SetHAnchor(ANCHOR_MIDDLE)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
 
-    -- 2. 官方精美复古羊皮纸外框 (宽 820, 高 560)
-    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(410, 520, STRINGS.WINDOW_TITLE or "看 板", nil, nil, ""))
+    -- 2. 官方精美复古羊皮纸外框 (宽 1040, 高 560，大幅拉伸空间)
+    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(520, 530, STRINGS.WINDOW_TITLE or "看 板", nil, nil, ""))
     self.bg:SetPosition(0, 0, 0)
 
-    -- 3. 左右双列分栏容器 (精细坐标，完全收束在内框中)
-    -- ==================== 左列：个人 (x = -175) ====================
+    -- 3. 左右双列分栏容器 (宽敞左右布局，x = -240 与 x = 240)
+    -- ==================== 左列：个人 (x = -240) ====================
     self.left_col = self.root:AddChild(Widget("left_col"))
-    self.left_col:SetPosition(-175, 0, 0)
+    self.left_col:SetPosition(-240, 0, 0)
 
     self.personal_header = self.left_col:AddChild(Text(HEADERFONT, 28))
     self.personal_header:SetPosition(0, 195, 0)
@@ -39,16 +39,16 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.add_personal_btn = self.left_col:AddChild(TEMPLATES.StandardButton(
         function() self:ShowSignInputModal(false) end,
         STRINGS.ADD_PERSONAL_BUTTON or "+ 添加个人任务",
-        { 160, 38 }
+        { 180, 38 }
     ))
     self.add_personal_btn:SetPosition(0, 150, 0)
 
     self.personal_list = self.left_col:AddChild(Widget("personal_list"))
     self.personal_list:SetPosition(0, 0, 0)
 
-    -- ==================== 右列：团队 (x = 175) ====================
+    -- ==================== 右列：团队 (x = 240) ====================
     self.right_col = self.root:AddChild(Widget("right_col"))
-    self.right_col:SetPosition(175, 0, 0)
+    self.right_col:SetPosition(240, 0, 0)
 
     self.team_header = self.right_col:AddChild(Text(HEADERFONT, 28))
     self.team_header:SetPosition(0, 195, 0)
@@ -58,7 +58,7 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.add_team_btn = self.right_col:AddChild(TEMPLATES.StandardButton(
         function() self:ShowSignInputModal(true) end,
         STRINGS.ADD_TEAM_BUTTON or "+ 添加团队目标",
-        { 160, 38 }
+        { 180, 38 }
     ))
     self.add_team_btn:SetPosition(0, 150, 0)
 
@@ -221,11 +221,11 @@ function AtlasBookUI:UpdateTaskList()
     end
 end
 
--- 创建单行任务条目
+-- 创建单行任务条目（无省略号截断，全字完整呈现）
 function AtlasBookUI:CreateTaskItem(task, is_team)
     local item = Widget("task_item")
 
-    -- 1. 复选框按钮 [ √ ] 或 [   ]（使用最标准的中文根号对勾 √，100% 不会变问号）
+    -- 1. 复选框按钮 [ √ ] 或 [   ]（标准数学根号对勾 √，绝不报问号）
     local checkbox_text = task.completed and (STRINGS.COMPLETED_TASK or "√") or (STRINGS.PENDING_TASK or "")
     local checkbox = item:AddChild(TEMPLATES.StandardButton(
         function()
@@ -234,20 +234,15 @@ function AtlasBookUI:CreateTaskItem(task, is_team)
         checkbox_text,
         { 34, 34 }
     ))
-    checkbox:SetPosition(-125, 0, 0)
+    checkbox:SetPosition(-170, 0, 0)
 
-    -- 2. 任务文字内容
+    -- 2. 任务文字内容（彻底移除省略号，宽幅完整展示）
     local text = item:AddChild(Text(CHATFONT, 20))
     text:SetPosition(-5, 0, 0)
-    text:SetRegionSize(185, 36)
+    text:SetRegionSize(260, 36)
     text:SetHAlign(ANCHOR_LEFT)
     text:SetVAlign(ANCHOR_MIDDLE)
-
-    local display_text = task.text or ""
-    if #display_text > 20 then
-        display_text = display_text:sub(1, 20) .. "..."
-    end
-    text:SetString(display_text)
+    text:SetString(task.text or "")
 
     if task.completed then
         text:SetColour(0.48, 0.48, 0.48, 1) -- 已完成：柔和灰色
@@ -267,7 +262,7 @@ function AtlasBookUI:CreateTaskItem(task, is_team)
         STRINGS.DELETE_BUTTON or "X",
         { 30, 30 }
     ))
-    delete_btn:SetPosition(125, 0, 0)
+    delete_btn:SetPosition(170, 0, 0)
 
     return item
 end
