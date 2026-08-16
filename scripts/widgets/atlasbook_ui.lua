@@ -26,16 +26,16 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.root:SetHAnchor(ANCHOR_MIDDLE)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
 
-    -- 2. 官方精美复古羊皮纸外框 (宽 740, 高 520, 1.0真实比例)
+    -- 2. 官方精美复古羊皮纸外框 (宽 740, 高 520, 1.0 真实比例)
     self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(740, 520, STRINGS.WINDOW_TITLE or "看 板", nil, nil, ""))
     self.bg:SetScale(1.0, 1.0)
     self.bg:SetPosition(0, 0, 0)
 
-    -- 3. 右上角模式切换开关 (点击在【双列全景 ⇄ 单列聚焦】之间无缝切换)
+    -- 3. 右上角模式切换开关（极简"切 换"二字）
     self.mode_toggle_btn = self.root:AddChild(TEMPLATES.StandardButton(
         function() self:ToggleLayoutMode() end,
-        "单列模式",
-        { 110, 32 }
+        "切 换",
+        { 85, 32 }
     ))
     self.mode_toggle_btn:SetPosition(260, 205, 0)
 
@@ -84,27 +84,27 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     self.dual_team_list:SetPosition(0, 0, 0)
 
     -- ====================================================================
-    -- 5. 模式 B：单列聚焦容器 (Single Container)
+    -- 5. 模式 B：单列聚焦容器 (Single Container - 左右并排顶栏)
     -- ====================================================================
     self.single_container = self.root:AddChild(Widget("single_container"))
     self.single_container:SetPosition(0, 0, 0)
     self.single_container:Hide()
 
-    -- 单列顶部：个人/团队切换胶囊
+    -- 单列顶部左侧：个人/团队切换按钮 (同一行并排，x = -115)
     self.single_tab_btn = self.single_container:AddChild(TEMPLATES.StandardButton(
         function() self:ToggleSingleTab() end,
-        "当前视图：【 个人计划 】 (点击切至团队)",
-        { 320, 38 }
+        "当前：个人计划 ⇄ 团队",
+        { 220, 36 }
     ))
-    self.single_tab_btn:SetPosition(0, 175, 0)
+    self.single_tab_btn:SetPosition(-115, 155, 0)
 
-    -- 单列添加按钮
+    -- 单列顶部右侧：添加任务按钮 (同一行并排，x = 125)
     self.single_add_btn = self.single_container:AddChild(TEMPLATES.StandardButton(
         function() self:ShowSignInputModal(self.single_tab == "team") end,
         "+ 添加个人任务",
-        { 190, 36 }
+        { 180, 36 }
     ))
-    self.single_add_btn:SetPosition(0, 130, 0)
+    self.single_add_btn:SetPosition(125, 155, 0)
 
     self.single_task_list = self.single_container:AddChild(Widget("single_task_list"))
     self.single_task_list:SetPosition(0, 0, 0)
@@ -158,17 +158,15 @@ function AtlasBookUI:RefreshLayout()
     if self.layout_mode == "dual" then
         self.dual_container:Show()
         self.single_container:Hide()
-        self.mode_toggle_btn:SetText("单列模式")
         self:UpdateDualTaskList()
     else
         self.dual_container:Hide()
         self.single_container:Show()
-        self.mode_toggle_btn:SetText("双列模式")
         if self.single_tab == "team" then
-            self.single_tab_btn:SetText("当前：【 团队目标 】 (点击切至个人)")
+            self.single_tab_btn:SetText("当前：团队目标 ⇄ 个人")
             self.single_add_btn:SetText("+ 添加团队目标")
         else
-            self.single_tab_btn:SetText("当前：【 个人计划 】 (点击切至团队)")
+            self.single_tab_btn:SetText("当前：个人计划 ⇄ 团队")
             self.single_add_btn:SetText("+ 添加个人任务")
         end
         self:UpdateSingleTaskList()
@@ -304,7 +302,7 @@ function AtlasBookUI:UpdateDualTaskList()
     end
 end
 
--- 绘制单列模式任务列表
+-- 绘制单列模式任务列表 (全宽舒适排版)
 function AtlasBookUI:UpdateSingleTaskList()
     if self.single_task_items then
         for _, item in pairs(self.single_task_items) do
@@ -318,7 +316,7 @@ function AtlasBookUI:UpdateSingleTaskList()
     local tasks = is_team and (client_data.team or {}) or (client_data.personal or {})
 
     if self.single_task_list then
-        local y_offset = 75
+        local y_offset = 95
         for i, task_data in ipairs(tasks) do
             if i <= 6 then
                 local item = self:CreateSingleTaskItem(task_data, is_team)
