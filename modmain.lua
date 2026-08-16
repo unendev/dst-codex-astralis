@@ -20,7 +20,11 @@ PrefabFiles = { "atlas_book" }
 
 Assets = {
     Asset("ANIM", "anim/books.zip"),
+    Asset("ATLAS", "images/inventoryimages/atlas_book.xml"),
+    Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
+
+RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/atlas_book.xml"), "atlas_book.tex")
 
 -- 1. 基础字符串定义
 STRINGS.NAMES.ATLAS_BOOK = "任务协同看板"
@@ -201,7 +205,7 @@ AddRecipe2(
     "atlas_book",
     { Ingredient("papyrus", 2), Ingredient("fossil_piece", 1) },
     TECH.NONE,
-    { atlas = "images/inventoryimages1.xml", image = "book_research_station.tex" },
+    { atlas = "images/inventoryimages/atlas_book.xml", image = "atlas_book.tex" },
     { "CHARACTER", "BOOKS" }
 )
 
