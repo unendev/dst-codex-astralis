@@ -190,38 +190,30 @@ function AtlasBookUI:ShowSignInputModal()
 end
 
 function AtlasBookUI:AddTask(text)
-    if TheWorld and TheWorld.components.atlas_todolist and TheWorld.ismastersim then
-        TheWorld.components.atlas_todolist:AddTask(text)
-    else
-        local rpc = GetModRPC("atlas_book", "add_task")
-        if rpc then SendModRPCToServer(rpc, text) end
+    local rpc = GetModRPC("atlas_book", "add_task")
+    if rpc then
+        SendModRPCToServer(rpc, text)
     end
 end
 
 function AtlasBookUI:ToggleTask(id, is_completed)
-    if TheWorld and TheWorld.components.atlas_todolist and TheWorld.ismastersim then
-        TheWorld.components.atlas_todolist:ToggleTask(id, is_completed)
-    else
-        local rpc = GetModRPC("atlas_book", "toggle_task")
-        if rpc then SendModRPCToServer(rpc, id, is_completed) end
+    local rpc = GetModRPC("atlas_book", "toggle_task")
+    if rpc then
+        SendModRPCToServer(rpc, id, is_completed)
     end
 end
 
 function AtlasBookUI:DeleteTask(id)
-    if TheWorld and TheWorld.components.atlas_todolist and TheWorld.ismastersim then
-        TheWorld.components.atlas_todolist:DeleteTask(id)
-    else
-        local rpc = GetModRPC("atlas_book", "delete_task")
-        if rpc then SendModRPCToServer(rpc, id) end
+    local rpc = GetModRPC("atlas_book", "delete_task")
+    if rpc then
+        SendModRPCToServer(rpc, id)
     end
 end
 
 function AtlasBookUI:RequestTaskSync()
-    if TheWorld and TheWorld.components.atlas_todolist and TheWorld.ismastersim then
-        self:UpdateTaskList()
-    else
-        local rpc = GetModRPC("atlas_book", "sync_tasks")
-        if rpc then SendModRPCToServer(rpc) end
+    local rpc = GetModRPC("atlas_book", "sync_tasks")
+    if rpc then
+        SendModRPCToServer(rpc)
     end
 end
 
@@ -237,6 +229,7 @@ function AtlasBookUI:SetView(view_name)
         self.planner_view:Show()
         self.guide_tab_button:SetTextColour(0, 0, 0, 1)
         self.planner_tab_button:SetTextColour(0.8, 0, 0, 1)
+        self:RequestTaskSync()
         self:UpdateTaskList()
     end
 end
@@ -250,12 +243,7 @@ function AtlasBookUI:UpdateTaskList()
     self.task_items = {}
     if not self.task_list then return end
 
-    local tasks = {}
-    if TheWorld and TheWorld.components and TheWorld.components.atlas_todolist and TheWorld.ismastersim then
-        tasks = TheWorld.components.atlas_todolist:GetTasks() or {}
-    elseif _G.ATLAS_CLIENT_DATA and _G.ATLAS_CLIENT_DATA.tasks then
-        tasks = _G.ATLAS_CLIENT_DATA.tasks
-    end
+    local tasks = (_G.ATLAS_CLIENT_DATA and _G.ATLAS_CLIENT_DATA.tasks) or {}
 
     local y_offset = 200
     for i, task_data in ipairs(tasks) do

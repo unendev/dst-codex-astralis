@@ -1,96 +1,114 @@
+-- ====================================================================
+-- 《万象全书》服务端 TodoList 组件（多玩家私有化隔离）
+-- ====================================================================
+
 local AtlasTodoList = Class(function(self, inst)
     self.inst = inst
-    self.tasks = {}
-    self.next_id = 1
+    self.personal_tasks = {} -- 结构: [userid] = { tasks = {}, next_id = 1 }
 end)
 
-function AtlasTodoList:AddTask(text)
-    if not self.inst.ismastersim then return nil end
-
-    if text and text:gsub("%s+", "") ~= "" then
-        local task = {
-            id = self.next_id,
-            text = text,
-            completed = false,
-            timestamp = os.time()
+-- 获取或初始化指定玩家的数据仓储
+function AtlasTodoList:GetPlayerStore(userid)
+    userid = userid or "default_user"
+    if not self.personal_tasks[userid] then
+        self.personal_tasks[userid] = {
+            tasks = {},
+            next_id = 1,
         }
-        table.insert(self.tasks, task)
-        self.next_id = self.next_id + 1
-        self:SyncToClients()
-        return task
     end
-    return nil
+    return self.personal_tasks[userid]
 end
 
-function AtlasTodoList:ToggleTask(task_id, is_completed)
-    if not self.inst.ismastersim then return false end
+-- 添加任务（绑定该玩家 userid）
+function AtlasTodoList:AddTask(userid, text)
+    if not self.inst.ismastersim then return nil end
+    if not text or text:gsub("%s+", "") == "" then return nil end
 
-    for _, task in ipairs(self.tasks) do
+    local store = self:GetPlayerStore(userid)
+    local task = {
+        id = store.next_id,
+        text = text,
+        completed = false,
+        timestamp = os.time(),
+    }
+    table.insert(store.tasks, task)
+    store.next_id = store.next_id + 1
+    self:SyncToClient(userid)
+    return task
+end
+
+-- 切换任务完成状态
+function AtlasTodoList:ToggleTask(userid, task_id, is_completed)
+    if not self.inst.ismastersim then return false end
+    local store = self:GetPlayerStore(userid)
+    for _, task in ipairs(store.tasks) do
         if task.id == task_id then
             task.completed = is_completed
-            self:SyncToClients()
+            self:SyncToClient(userid)
             return true
         end
     end
     return false
 end
 
-function AtlasTodoList:DeleteTask(task_id)
+-- 删除任务
+function AtlasTodoList:DeleteTask(userid, task_id)
     if not self.inst.ismastersim then return false end
-
-    for i, task in ipairs(self.tasks) do
+    local store = self:GetPlayerStore(userid)
+    for i, task in ipairs(store.tasks) do
         if task.id == task_id then
-            table.remove(self.tasks, i)
-            self:SyncToClients()
+            table.remove(store.tasks, i)
+            self:SyncToClient(userid)
             return true
         end
     end
     return false
 end
 
-function AtlasTodoList:GetTasks()
-    return self.tasks
+-- 获取指定玩家的任务列表
+function AtlasTodoList:GetTasks(userid)
+    local store = self:GetPlayerStore(userid)
+    return store.tasks
 end
 
+-- 定向单播同步给指定玩家
 function AtlasTodoList:SyncToClient(userid)
-    if not self.inst.ismastersim then return end
-    local tasks_json = json.encode(self.tasks)
+    if not self.inst.ismastersim or not userid then return end
+    local store = self:GetPlayerStore(userid)
+    local tasks_json = json.encode(store.tasks)
     local rpc_id = GetClientModRPC("atlas_book", "sync_tasks")
-    if rpc_id and userid then
+    if rpc_id then
         SendModRPCToClient(rpc_id, userid, tasks_json)
     end
 end
 
-function AtlasTodoList:SyncToClients()
+-- 广播给当前在线的所有玩家（各发各的专属数据）
+function AtlasTodoList:SyncToAllOnlineClients()
     if not self.inst.ismastersim then return end
-    local tasks_json = json.encode(self.tasks)
-    local rpc_id = GetClientModRPC("atlas_book", "sync_tasks")
-    if rpc_id then
-        local players = AllPlayers or (_G and _G.AllPlayers) or {}
-        for _, v in ipairs(players) do
-            if v:IsValid() and v.userid then
-                SendModRPCToClient(rpc_id, v.userid, tasks_json)
-            end
+    local players = AllPlayers or (_G and _G.AllPlayers) or {}
+    for _, player in ipairs(players) do
+        if player:IsValid() and player.userid then
+            self:SyncToClient(player.userid)
         end
     end
 end
 
+-- 存盘序列化
 function AtlasTodoList:OnSave()
     if not self.inst.ismastersim then return nil end
     return {
-        tasks = self.tasks,
-        next_id = self.next_id
+        personal_tasks = self.personal_tasks,
     }
 end
 
+-- 读盘反序列化
 function AtlasTodoList:OnLoad(data)
     if not self.inst.ismastersim then return end
-    if data then
-        self.tasks = data.tasks or {}
-        self.next_id = data.next_id or 1
+    if data and data.personal_tasks then
+        self.personal_tasks = data.personal_tasks
     end
     self.inst:DoTaskInTime(1, function()
-        self:SyncToClients()
+        self:SyncToAllOnlineClients()
     end)
 end
 

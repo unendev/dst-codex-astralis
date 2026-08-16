@@ -201,25 +201,25 @@ end)
 
 -- 9. RPC 网络处理器
 AddModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_ADD_TASK, function(player, text)
-    if GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
-        GLOBAL.TheWorld.components.atlas_todolist:AddTask(text)
+    if player and player.userid and GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
+        GLOBAL.TheWorld.components.atlas_todolist:AddTask(player.userid, text)
     end
 end)
 
 AddModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_TOGGLE_TASK, function(player, id, is_completed)
-    if GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
-        GLOBAL.TheWorld.components.atlas_todolist:ToggleTask(id, is_completed)
+    if player and player.userid and GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
+        GLOBAL.TheWorld.components.atlas_todolist:ToggleTask(player.userid, id, is_completed)
     end
 end)
 
 AddModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_DELETE_TASK, function(player, id)
-    if GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
-        GLOBAL.TheWorld.components.atlas_todolist:DeleteTask(id)
+    if player and player.userid and GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
+        GLOBAL.TheWorld.components.atlas_todolist:DeleteTask(player.userid, id)
     end
 end)
 
 AddModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_SYNC_TASKS, function(player)
-    if GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
+    if player and player.userid and GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
         GLOBAL.TheWorld.components.atlas_todolist:SyncToClient(player.userid)
     end
 end)
