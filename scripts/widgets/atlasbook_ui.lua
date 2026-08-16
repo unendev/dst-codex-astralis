@@ -136,6 +136,8 @@ end)
 
 -- 纯客户端呼出官方 WriteableWidget 告示牌输入弹窗
 function AtlasBookUI:ShowSignInputModal()
+    local dummy_inst = CreateEntity()
+    local player = self.owner or ThePlayer
     local config = {
         prompt = STRINGS.INPUT_PROMPT or "输入任务内容:",
         animbank = "ui_board_5x3",
@@ -145,31 +147,45 @@ function AtlasBookUI:ShowSignInputModal()
         cancelbtn = {
             text = STRINGS.CANCEL_BUTTON or "取消",
             control = CONTROL_CANCEL,
+            cb = function(inst, doer, widget)
+                if widget and widget.Close then
+                    widget:Close()
+                elseif player and player.HUD then
+                    player.HUD:CloseWriteableWidget()
+                end
+            end,
         },
         middlebtn = {
             text = STRINGS.CLEAR_BUTTON or "清空",
             cb = function(inst, doer, widget)
-                widget:OverrideText("")
+                if widget and widget.OverrideText then
+                    widget:OverrideText("")
+                end
             end,
             control = CONTROL_MENU_MISC_2,
         },
         acceptbtn = {
             text = STRINGS.CONFIRM_BUTTON or "确定",
             cb = function(inst, doer, widget)
-                local text = widget:GetText()
+                local text = widget and widget.GetText and widget:GetText()
                 if text and text:gsub("%s+", "") ~= "" then
                     self:AddTask(text)
+                end
+                if widget and widget.Close then
+                    widget:Close()
+                elseif player and player.HUD then
+                    player.HUD:CloseWriteableWidget()
                 end
             end,
             control = CONTROL_ACCEPT,
         },
     }
 
-    local dummy_inst = CreateEntity()
-    local screen = WriteableWidget(self.owner or ThePlayer, dummy_inst, config)
-    TheFrontEnd:PushScreen(screen)
-    if TheFrontEnd:GetActiveScreen() == screen then
-        screen.edit_text:SetEditing(true)
+    if player and player.HUD and player.HUD.OpenWriteableWidget then
+        player.HUD:OpenWriteableWidget(dummy_inst, config)
+    else
+        local screen = WriteableWidget(player, dummy_inst, config)
+        TheFrontEnd:PushScreen(screen)
     end
 end
 
