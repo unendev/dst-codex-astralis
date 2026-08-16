@@ -1,7 +1,7 @@
 name = "任务协同看板"
 description = "一本出生自带的todo看板，支持个人与团队看板"
 author = "哈基米"
-version = "5.0"
+version = "5.1"
 forumthread = ""
 
 api_version_dst = 10
