@@ -116,6 +116,28 @@ GLOBAL.ACTIONS.READ.fn = function(act)
     return true
 end
 
+-- 用户本地偏好设置 (默认极速秒开模式，亦受 Mod 配置控制)
+local default_anim_cfg = GetModConfigData("reading_anim")
+GLOBAL.ATLAS_USER_SETTINGS = {
+    fast_mode = (default_anim_cfg == false or default_anim_cfg == nil)
+}
+
+-- 动态 StateGraph 动作拦截：极速模式 0.1s 极轻微手势瞬间开 UI，经典模式保留举书施法
+local function AtlasReadActionHandler(inst, action)
+    if action.invobject and action.invobject:HasTag("atlas_book") then
+        local is_fast = GLOBAL.ATLAS_USER_SETTINGS and GLOBAL.ATLAS_USER_SETTINGS.fast_mode ~= false
+        if is_fast then
+            return "doshortaction"
+        else
+            return "book"
+        end
+    end
+    return "book"
+end
+
+AddStategraphActionHandler("wilson", ActionHandler(GLOBAL.ACTIONS.READ, AtlasReadActionHandler))
+AddStategraphActionHandler("wilson_client", ActionHandler(GLOBAL.ACTIONS.READ, AtlasReadActionHandler))
+
 -- 4. 客户端 HUD 界面挂载
 AddClassPostConstruct("screens/playerhud", function(self)
     function self:OpenAtlasBook()

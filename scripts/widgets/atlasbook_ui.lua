@@ -35,7 +35,15 @@ local AtlasBookUI = Class(Screen, function(self, owner)
         self.bg.title:SetColour(0.98, 0.92, 0.70, 1)
     end
 
-    -- 3. 右上角模式切换开关（极简"切 换"二字）
+    -- 3. 顶部对称工具栏（左上角：秒开动画切换；右上角：双列/单列切换）
+    local is_fast = _G.ATLAS_USER_SETTINGS and _G.ATLAS_USER_SETTINGS.fast_mode ~= false
+    self.fast_mode_btn = self.root:AddChild(TEMPLATES.StandardButton(
+        function() self:ToggleFastMode() end,
+        is_fast and "⚡秒开:开" or "📖施法:开",
+        { 85, 32 }
+    ))
+    self.fast_mode_btn:SetPosition(-260, 205, 0)
+
     self.mode_toggle_btn = self.root:AddChild(TEMPLATES.StandardButton(
         function() self:ToggleLayoutMode() end,
         "切 换",
@@ -131,6 +139,17 @@ local AtlasBookUI = Class(Screen, function(self, owner)
         self:RefreshLayout()
     end, TheWorld)
 end)
+
+-- 动态秒开/施法模式切换
+function AtlasBookUI:ToggleFastMode()
+    if _G.ATLAS_USER_SETTINGS then
+        _G.ATLAS_USER_SETTINGS.fast_mode = not (_G.ATLAS_USER_SETTINGS.fast_mode ~= false)
+        local is_fast = _G.ATLAS_USER_SETTINGS.fast_mode
+        if self.fast_mode_btn then
+            self.fast_mode_btn:SetText(is_fast and "⚡秒开:开" or "📖施法:开")
+        end
+    end
+end
 
 -- 模式切换（双列 ⇄ 单列）
 function AtlasBookUI:ToggleLayoutMode()
