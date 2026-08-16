@@ -39,7 +39,7 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     local is_fast = _G.ATLAS_USER_SETTINGS and _G.ATLAS_USER_SETTINGS.fast_mode ~= false
     self.fast_mode_btn = self.root:AddChild(TEMPLATES.StandardButton(
         function() self:ToggleFastMode() end,
-        is_fast and "⚡秒开:开" or "📖施法:开",
+        is_fast and "秒开: 开" or "秒开: 关",
         { 85, 32 }
     ))
     self.fast_mode_btn:SetPosition(-260, 205, 0)
@@ -146,7 +146,12 @@ function AtlasBookUI:ToggleFastMode()
         _G.ATLAS_USER_SETTINGS.fast_mode = not (_G.ATLAS_USER_SETTINGS.fast_mode ~= false)
         local is_fast = _G.ATLAS_USER_SETTINGS.fast_mode
         if self.fast_mode_btn then
-            self.fast_mode_btn:SetText(is_fast and "⚡秒开:开" or "📖施法:开")
+            self.fast_mode_btn:SetText(is_fast and "秒开: 开" or "秒开: 关")
+        end
+        -- 同步至服务端 StateGraph 状态机
+        local rpc = GetModRPC("atlas_book", "set_anim_mode")
+        if rpc then
+            SendModRPCToServer(rpc, is_fast)
         end
     end
 end

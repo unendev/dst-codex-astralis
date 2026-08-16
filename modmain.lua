@@ -49,6 +49,7 @@ local ATLAS_RPC_TOGGLE_TASK = "toggle_task"
 local ATLAS_RPC_DELETE_TASK = "delete_task"
 local ATLAS_RPC_SYNC_TASKS = "sync_tasks"
 local ATLAS_RPC_OPEN_UI = "open_ui"
+local ATLAS_RPC_SET_ANIM_MODE = "set_anim_mode"
 
 GLOBAL.ATLAS_RPC = {
     NAMESPACE = ATLAS_RPC_NAMESPACE,
@@ -57,6 +58,7 @@ GLOBAL.ATLAS_RPC = {
     DELETE_TASK = ATLAS_RPC_DELETE_TASK,
     SYNC_TASKS = ATLAS_RPC_SYNC_TASKS,
     OPEN_UI = ATLAS_RPC_OPEN_UI,
+    SET_ANIM_MODE = ATLAS_RPC_SET_ANIM_MODE,
 }
 
 -- 3. 全角色通用阅读动作覆盖（原版成熟蓝本）
@@ -125,7 +127,12 @@ GLOBAL.ATLAS_USER_SETTINGS = {
 -- 动态 StateGraph 动作拦截：极速模式 0.1s 极轻微手势瞬间开 UI，经典模式保留举书施法
 local function AtlasReadActionHandler(inst, action)
     if action.invobject and action.invobject:HasTag("atlas_book") then
-        local is_fast = GLOBAL.ATLAS_USER_SETTINGS and GLOBAL.ATLAS_USER_SETTINGS.fast_mode ~= false
+        local is_fast
+        if inst == GLOBAL.ThePlayer then
+            is_fast = (GLOBAL.ATLAS_USER_SETTINGS and GLOBAL.ATLAS_USER_SETTINGS.fast_mode ~= false)
+        else
+            is_fast = (inst and inst._atlas_fast_mode ~= false)
+        end
         if is_fast then
             return "doshortaction"
         else
@@ -238,6 +245,12 @@ end)
 AddModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_SYNC_TASKS, function(player)
     if player and player.userid and GLOBAL.TheWorld and GLOBAL.TheWorld.components.atlas_todolist then
         GLOBAL.TheWorld.components.atlas_todolist:SyncToClient(player.userid)
+    end
+end)
+
+AddModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_SET_ANIM_MODE, function(player, is_fast)
+    if player then
+        player._atlas_fast_mode = (is_fast == true)
     end
 end)
 
