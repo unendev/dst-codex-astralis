@@ -148,6 +148,11 @@ function AtlasBookUI:ToggleSingleTab()
     self:RefreshLayout()
 end
 
+-- 兼容性刷新接口
+function AtlasBookUI:UpdateTaskList()
+    self:RefreshLayout()
+end
+
 -- 统一重绘界面排版与内容
 function AtlasBookUI:RefreshLayout()
     if self.layout_mode == "dual" then

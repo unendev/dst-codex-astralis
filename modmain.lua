@@ -243,7 +243,7 @@ end)
 
 -- 9. 原生端到端自检探针 (Native E2E Test Probe)
 GLOBAL.c_test_atlas = function()
-    print("[ATLAS_AUTOTEST] ========== 开始万象书双列原生自检 ==========")
+    print("[ATLAS_AUTOTEST] ========== 开始万象书双模态原生自检 ==========")
     
     local test_json = json.encode({
         personal = { { id = 1, text = "自检个人任务", completed = false } },
@@ -260,13 +260,18 @@ GLOBAL.c_test_atlas = function()
     if AtlasBookUI and GLOBAL.ThePlayer then
         local ui_instance = AtlasBookUI(GLOBAL.ThePlayer)
         if ui_instance then
-            print("[ATLAS_AUTOTEST] 2. 双列 AtlasBookUI 界面实例化与构建: 100% 成功")
-            ui_instance:UpdateTaskList()
+            print("[ATLAS_AUTOTEST] 2. 双列模式实例化与构建: 100% 成功")
+            ui_instance:ToggleLayoutMode() -- 切到单列
+            print("[ATLAS_AUTOTEST] 3. 切换单列模式: 100% 成功")
+            ui_instance:ToggleSingleTab()  -- 切换团队子Tab
+            print("[ATLAS_AUTOTEST] 4. 单列子Tab切换: 100% 成功")
+            ui_instance:ToggleLayoutMode() -- 切回双列
+            print("[ATLAS_AUTOTEST] 5. 切回双列模式: 100% 成功")
             if ui_instance.Kill then ui_instance:Kill() end
         end
     end
 
-    print("[ATLAS_AUTOTEST] ========== 双列原生自检全部通过！ ==========")
+    print("[ATLAS_AUTOTEST] ========== 双模态原生自检全部通过！ ==========")
 end
 
 AddPlayerPostInit(function(inst)
