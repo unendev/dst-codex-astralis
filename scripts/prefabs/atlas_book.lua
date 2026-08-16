@@ -1,8 +1,6 @@
 local assets =
 {
     Asset("ANIM", "anim/books.zip"),
-    Asset("ATLAS", "images/inventoryimages/atlas_book.xml"),
-    Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
 
 local prefabs = {}
@@ -45,8 +43,8 @@ local function fn()
     inst.components.book.oncanread = function(inst, reader) return true end
 
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "atlas_book"
-    inst.components.inventoryitem.atlasname = "images/inventoryimages/atlas_book.xml"
+    inst.components.inventoryitem.imagename = "book_research_station"
+    inst.components.inventoryitem.atlasname = "images/inventoryimages1.xml"
 
     inst:AddComponent("fuel")
     inst.components.fuel.fuelvalue = TUNING.MED_FUEL
