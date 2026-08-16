@@ -19,10 +19,9 @@ local table = GLOBAL.table
 PrefabFiles = { "atlas_book" }
 
 Assets = {
-    Asset("ANIM", "anim/book_fossil.zip"),
-    Asset("ANIM", "anim/swap_book_fossil.zip"),
-    Asset("ATLAS", "images/inventoryimages/book_fossil.xml"),
-    Asset("IMAGE", "images/inventoryimages/book_fossil.tex"),
+    Asset("ANIM", "anim/books.zip"),
+    Asset("ATLAS", "images/inventoryimages/atlas_book.xml"),
+    Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
 
 -- 1. 基础字符串定义
@@ -204,7 +203,7 @@ AddRecipe2(
     "atlas_book",
     { Ingredient("papyrus", 2), Ingredient("fossil_piece", 1) },
     TECH.NONE,
-    { atlas = "images/inventoryimages/book_fossil.xml", image = "book_fossil.tex" },
+    { atlas = "images/inventoryimages/atlas_book.xml", image = "atlas_book.tex" },
     { "CHARACTER", "BOOKS" }
 )
 

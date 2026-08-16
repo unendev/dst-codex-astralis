@@ -1,9 +1,8 @@
 local assets =
 {
-    Asset("ANIM", "anim/book_fossil.zip"),
-    Asset("ANIM", "anim/swap_book_fossil.zip"),
-    Asset("ATLAS", "images/inventoryimages/book_fossil.xml"),
-    Asset("IMAGE", "images/inventoryimages/book_fossil.tex"),
+    Asset("ANIM", "anim/books.zip"),
+    Asset("ATLAS", "images/inventoryimages/atlas_book.xml"),
+    Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
 
 local prefabs = {}
@@ -23,9 +22,9 @@ local function fn()
 
     MakeInventoryPhysics(inst)
 
-    inst.AnimState:SetBank("book_fossil")
-    inst.AnimState:SetBuild("book_fossil")
-    inst.AnimState:PlayAnimation("book_fossil")
+    inst.AnimState:SetBank("books")
+    inst.AnimState:SetBuild("books")
+    inst.AnimState:PlayAnimation("book_research_station")
 
     MakeInventoryFloatable(inst, "med", nil, 0.75)
 
@@ -39,15 +38,15 @@ local function fn()
     end
 
     inst:AddComponent("inspectable")
-    inst.components.inspectable:SetDescription(STRINGS.RECIPE_DESC and STRINGS.RECIPE_DESC.ATLAS_BOOK or "包含丰富知识的指南书")
+    inst.components.inspectable:SetDescription(STRINGS.RECIPE_DESC and STRINGS.RECIPE_DESC.ATLAS_BOOK or "任务协同看板")
 
     inst:AddComponent("book")
     inst.components.book.onread = onread_server
     inst.components.book.oncanread = function(inst, reader) return true end
 
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "book_fossil"
-    inst.components.inventoryitem.atlasname = "images/inventoryimages/book_fossil.xml"
+    inst.components.inventoryitem.imagename = "atlas_book"
+    inst.components.inventoryitem.atlasname = "images/inventoryimages/atlas_book.xml"
 
     inst:AddComponent("fuel")
     inst.components.fuel.fuelvalue = TUNING.MED_FUEL
