@@ -1,5 +1,5 @@
 -- ====================================================================
--- 《万象全书》纯净任务看板界面 (Atlas Book Codex UI)
+-- 《万象全书》多模态任务看板界面 (Dual & Single Hybrid View)
 -- ====================================================================
 
 local Screen = require "widgets/screen"
@@ -13,41 +13,105 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     Screen._ctor(self, "AtlasBookUI")
 
     self.owner = owner
-    self.current_tab = "personal" -- "personal" 或 "team"
-    self.task_items = {}
+    self.layout_mode = "dual"    -- "dual" (双列并排) 或 "single" (单列聚焦)
+    self.single_tab = "personal"  -- 单列模式下的子页: "personal" 或 "team"
+    
+    self.dual_personal_items = {}
+    self.dual_team_items = {}
+    self.single_task_items = {}
 
-    -- 1. 根节点与屏幕居中自适应（全分辨率等比缩放）
+    -- 1. 根节点与屏幕居中自适应
     self.root = self:AddChild(Widget("root"))
     self.root:SetVAnchor(ANCHOR_MIDDLE)
     self.root:SetHAnchor(ANCHOR_MIDDLE)
     self.root:SetScaleMode(SCALEMODE_PROPORTIONAL)
 
-    -- 2. 官方精美复古羊皮纸外框 (重置 Scale 为 1.0，彻底解除官方 0.7 缩放限制)
-    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(680, 500, STRINGS.WINDOW_TITLE or "看 板", nil, nil, ""))
+    -- 2. 官方精美复古羊皮纸外框 (宽 740, 高 520, 1.0真实比例)
+    self.bg = self.root:AddChild(TEMPLATES.CurlyWindow(740, 520, STRINGS.WINDOW_TITLE or "看 板", nil, nil, ""))
     self.bg:SetScale(1.0, 1.0)
     self.bg:SetPosition(0, 0, 0)
 
-    -- 3. 顶部单按钮胶囊切换（点击在 个人 ⇄ 团队 之间秒速切换）
-    self.tab_toggle_btn = self.root:AddChild(TEMPLATES.StandardButton(
-        function() self:ToggleTab() end,
-        "📜 当前视图：【 个人计划 】  (点击切换)",
-        { 340, 42 }
+    -- 3. 右上角模式切换开关 (点击在【双列全景 ⇄ 单列聚焦】之间无缝切换)
+    self.mode_toggle_btn = self.root:AddChild(TEMPLATES.StandardButton(
+        function() self:ToggleLayoutMode() end,
+        "单列模式",
+        { 110, 32 }
     ))
-    self.tab_toggle_btn:SetPosition(0, 185, 0)
+    self.mode_toggle_btn:SetPosition(260, 205, 0)
 
-    -- 4. 添加任务主操作按钮
-    self.add_task_btn = self.root:AddChild(TEMPLATES.StandardButton(
-        function() self:ShowSignInputModal(self.current_tab == "team") end,
-        "+ 添加新任务",
-        { 220, 38 }
+    -- ====================================================================
+    -- 4. 模式 A：双列并排容器 (Dual Container)
+    -- ====================================================================
+    self.dual_container = self.root:AddChild(Widget("dual_container"))
+    self.dual_container:SetPosition(0, 0, 0)
+
+    -- 左列：个人 (x = -175)
+    self.left_col = self.dual_container:AddChild(Widget("left_col"))
+    self.left_col:SetPosition(-175, 0, 0)
+
+    self.personal_header = self.left_col:AddChild(Text(HEADERFONT, 28))
+    self.personal_header:SetPosition(0, 195, 0)
+    self.personal_header:SetColour(0.35, 0.65, 0.95, 1)
+    self.personal_header:SetString(STRINGS.PERSONAL_HEADER or "个 人")
+
+    self.add_personal_btn = self.left_col:AddChild(TEMPLATES.StandardButton(
+        function() self:ShowSignInputModal(false) end,
+        STRINGS.ADD_PERSONAL_BUTTON or "+ 添加个人任务",
+        { 155, 36 }
     ))
-    self.add_task_btn:SetPosition(0, 135, 0)
+    self.add_personal_btn:SetPosition(0, 150, 0)
 
-    -- 5. 任务列表容器（全宽居中，单行宽度达 460 像素，字再多也不挤）
-    self.task_list = self.root:AddChild(Widget("task_list"))
-    self.task_list:SetPosition(0, 0, 0)
+    self.dual_personal_list = self.left_col:AddChild(Widget("dual_personal_list"))
+    self.dual_personal_list:SetPosition(0, 0, 0)
 
+    -- 右列：团队 (x = 175)
+    self.right_col = self.dual_container:AddChild(Widget("right_col"))
+    self.right_col:SetPosition(175, 0, 0)
+
+    self.team_header = self.right_col:AddChild(Text(HEADERFONT, 28))
+    self.team_header:SetPosition(0, 195, 0)
+    self.team_header:SetColour(0.95, 0.70, 0.30, 1)
+    self.team_header:SetString(STRINGS.TEAM_HEADER or "团 队")
+
+    self.add_team_btn = self.right_col:AddChild(TEMPLATES.StandardButton(
+        function() self:ShowSignInputModal(true) end,
+        STRINGS.ADD_TEAM_BUTTON or "+ 添加团队目标",
+        { 155, 36 }
+    ))
+    self.add_team_btn:SetPosition(0, 150, 0)
+
+    self.dual_team_list = self.right_col:AddChild(Widget("dual_team_list"))
+    self.dual_team_list:SetPosition(0, 0, 0)
+
+    -- ====================================================================
+    -- 5. 模式 B：单列聚焦容器 (Single Container)
+    -- ====================================================================
+    self.single_container = self.root:AddChild(Widget("single_container"))
+    self.single_container:SetPosition(0, 0, 0)
+    self.single_container:Hide()
+
+    -- 单列顶部：个人/团队切换胶囊
+    self.single_tab_btn = self.single_container:AddChild(TEMPLATES.StandardButton(
+        function() self:ToggleSingleTab() end,
+        "当前视图：【 个人计划 】 (点击切至团队)",
+        { 320, 38 }
+    ))
+    self.single_tab_btn:SetPosition(0, 175, 0)
+
+    -- 单列添加按钮
+    self.single_add_btn = self.single_container:AddChild(TEMPLATES.StandardButton(
+        function() self:ShowSignInputModal(self.single_tab == "team") end,
+        "+ 添加个人任务",
+        { 190, 36 }
+    ))
+    self.single_add_btn:SetPosition(0, 130, 0)
+
+    self.single_task_list = self.single_container:AddChild(Widget("single_task_list"))
+    self.single_task_list:SetPosition(0, 0, 0)
+
+    -- ====================================================================
     -- 6. 底部关闭按钮
+    -- ====================================================================
     self.close_button = self.root:AddChild(TEMPLATES.StandardButton(
         function() self:Close() end,
         STRINGS.CLOSE_BUTTON or "关 闭",
@@ -55,35 +119,55 @@ local AtlasBookUI = Class(Screen, function(self, owner)
     ))
     self.close_button:SetPosition(0, -225, 0)
 
-    -- 7. 初始化与事件监听
+    -- 7. 初始化与数据同步
     self:RequestTaskSync()
-    self:RefreshView()
+    self:RefreshLayout()
 
     self.inst:ListenForEvent("atlas_todolist_updated", function()
-        self:RefreshView()
+        self:RefreshLayout()
     end, TheWorld)
 end)
 
--- 视图切换逻辑（个人 ⇄ 团队）
-function AtlasBookUI:ToggleTab()
-    if self.current_tab == "personal" then
-        self.current_tab = "team"
+-- 模式切换（双列 ⇄ 单列）
+function AtlasBookUI:ToggleLayoutMode()
+    if self.layout_mode == "dual" then
+        self.layout_mode = "single"
     else
-        self.current_tab = "personal"
+        self.layout_mode = "dual"
     end
-    self:RefreshView()
+    self:RefreshLayout()
 end
 
-function AtlasBookUI:RefreshView()
-    local is_team = (self.current_tab == "team")
-    if is_team then
-        self.tab_toggle_btn:SetText("⚔️ 当前视图：【 团队目标 】  (点击切至个人)")
-        self.add_task_btn:SetText("+ 添加团队目标")
+-- 单列模式下的子 Tab 切换（个人 ⇄ 团队）
+function AtlasBookUI:ToggleSingleTab()
+    if self.single_tab == "personal" then
+        self.single_tab = "team"
     else
-        self.tab_toggle_btn:SetText("📜 当前视图：【 个人计划 】  (点击切至团队)")
-        self.add_task_btn:SetText("+ 添加个人任务")
+        self.single_tab = "personal"
     end
-    self:UpdateTaskList()
+    self:RefreshLayout()
+end
+
+-- 统一重绘界面排版与内容
+function AtlasBookUI:RefreshLayout()
+    if self.layout_mode == "dual" then
+        self.dual_container:Show()
+        self.single_container:Hide()
+        self.mode_toggle_btn:SetText("单列模式")
+        self:UpdateDualTaskList()
+    else
+        self.dual_container:Hide()
+        self.single_container:Show()
+        self.mode_toggle_btn:SetText("双列模式")
+        if self.single_tab == "team" then
+            self.single_tab_btn:SetText("当前：【 团队目标 】 (点击切至个人)")
+            self.single_add_btn:SetText("+ 添加团队目标")
+        else
+            self.single_tab_btn:SetText("当前：【 个人计划 】 (点击切至团队)")
+            self.single_add_btn:SetText("+ 添加个人任务")
+        end
+        self:UpdateSingleTaskList()
+    end
 end
 
 -- 呼出官方木牌输入弹窗
@@ -141,57 +225,73 @@ function AtlasBookUI:ShowSignInputModal(is_team)
     end
 end
 
--- 网络操作
+-- 网络 RPC 操作
 function AtlasBookUI:AddTask(is_team, text)
     local rpc = GetModRPC("atlas_book", "add_task")
-    if rpc then
-        SendModRPCToServer(rpc, is_team, text)
-    end
+    if rpc then SendModRPCToServer(rpc, is_team, text) end
 end
 
 function AtlasBookUI:ToggleTask(is_team, id, is_completed)
     local rpc = GetModRPC("atlas_book", "toggle_task")
-    if rpc then
-        SendModRPCToServer(rpc, is_team, id, is_completed)
-    end
+    if rpc then SendModRPCToServer(rpc, is_team, id, is_completed) end
 end
 
 function AtlasBookUI:DeleteTask(is_team, id)
     local rpc = GetModRPC("atlas_book", "delete_task")
-    if rpc then
-        SendModRPCToServer(rpc, is_team, id)
-    end
+    if rpc then SendModRPCToServer(rpc, is_team, id) end
 end
 
 function AtlasBookUI:RequestTaskSync()
     local rpc = GetModRPC("atlas_book", "sync_tasks")
-    if rpc then
-        SendModRPCToServer(rpc)
-    end
+    if rpc then SendModRPCToServer(rpc) end
 end
 
--- 局部重绘任务列表
-function AtlasBookUI:UpdateTaskList()
-    if self.task_items then
-        for _, item in pairs(self.task_items) do
+-- 绘制双列模式任务列表
+function AtlasBookUI:UpdateDualTaskList()
+    if self.dual_personal_items then
+        for _, item in pairs(self.dual_personal_items) do
             if item and item.Kill then item:Kill() end
         end
     end
-    self.task_items = {}
+    self.dual_personal_items = {}
 
-    local is_team = (self.current_tab == "team")
+    if self.dual_team_items then
+        for _, item in pairs(self.dual_team_items) do
+            if item and item.Kill then item:Kill() end
+        end
+    end
+    self.dual_team_items = {}
+
     local client_data = _G.ATLAS_CLIENT_DATA or {}
-    local tasks = is_team and (client_data.team or {}) or (client_data.personal or {})
+    local personal_tasks = client_data.personal or {}
+    local team_tasks = client_data.team or {}
 
-    if self.task_list then
-        local y_offset = 80
-        for i, task_data in ipairs(tasks) do
+    -- 左列 (个人)
+    if self.dual_personal_list then
+        local y_offset = 95
+        for i, task_data in ipairs(personal_tasks) do
             if i <= 6 then
-                local task_item = self:CreateTaskItem(task_data, is_team)
-                if task_item then
-                    task_item:SetPosition(0, y_offset, 0)
-                    self.task_list:AddChild(task_item)
-                    table.insert(self.task_items, task_item)
+                local item = self:CreateDualTaskItem(task_data, false)
+                if item then
+                    item:SetPosition(0, y_offset, 0)
+                    self.dual_personal_list:AddChild(item)
+                    table.insert(self.dual_personal_items, item)
+                    y_offset = y_offset - 48
+                end
+            end
+        end
+    end
+
+    -- 右列 (团队)
+    if self.dual_team_list then
+        local y_offset = 95
+        for i, task_data in ipairs(team_tasks) do
+            if i <= 6 then
+                local item = self:CreateDualTaskItem(task_data, true)
+                if item then
+                    item:SetPosition(0, y_offset, 0)
+                    self.dual_team_list:AddChild(item)
+                    table.insert(self.dual_team_items, item)
                     y_offset = y_offset - 48
                 end
             end
@@ -199,22 +299,82 @@ function AtlasBookUI:UpdateTaskList()
     end
 end
 
--- 创建单行全宽舒适任务条目
-function AtlasBookUI:CreateTaskItem(task, is_team)
-    local item = Widget("task_item")
+-- 绘制单列模式任务列表
+function AtlasBookUI:UpdateSingleTaskList()
+    if self.single_task_items then
+        for _, item in pairs(self.single_task_items) do
+            if item and item.Kill then item:Kill() end
+        end
+    end
+    self.single_task_items = {}
 
-    -- 1. 复选框按钮 [ √ ] 或 [   ]（标准数学根号对勾，杜绝乱码）
+    local is_team = (self.single_tab == "team")
+    local client_data = _G.ATLAS_CLIENT_DATA or {}
+    local tasks = is_team and (client_data.team or {}) or (client_data.personal or {})
+
+    if self.single_task_list then
+        local y_offset = 75
+        for i, task_data in ipairs(tasks) do
+            if i <= 6 then
+                local item = self:CreateSingleTaskItem(task_data, is_team)
+                if item then
+                    item:SetPosition(0, y_offset, 0)
+                    self.single_task_list:AddChild(item)
+                    table.insert(self.single_task_items, item)
+                    y_offset = y_offset - 48
+                end
+            end
+        end
+    end
+end
+
+-- 创建双列下的单条任务项
+function AtlasBookUI:CreateDualTaskItem(task, is_team)
+    local item = Widget("dual_task_item")
+
     local checkbox_text = task.completed and (STRINGS.COMPLETED_TASK or "√") or (STRINGS.PENDING_TASK or "")
     local checkbox = item:AddChild(TEMPLATES.StandardButton(
-        function()
-            self:ToggleTask(is_team, task.id, not task.completed)
-        end,
+        function() self:ToggleTask(is_team, task.id, not task.completed) end,
+        checkbox_text,
+        { 34, 34 }
+    ))
+    checkbox:SetPosition(-125, 0, 0)
+
+    local text = item:AddChild(Text(CHATFONT, 20))
+    text:SetPosition(-5, 0, 0)
+    text:SetRegionSize(185, 36)
+    text:SetHAlign(ANCHOR_LEFT)
+    text:SetVAlign(ANCHOR_MIDDLE)
+    text:SetString(task.text or "")
+
+    if task.completed then
+        text:SetColour(0.48, 0.48, 0.48, 1)
+    else
+        text:SetColour(is_team and 0.98 or 0.88, is_team and 0.90 or 0.94, is_team and 0.78 or 1.0, 1)
+    end
+
+    local delete_btn = item:AddChild(TEMPLATES.StandardButton(
+        function() self:DeleteTask(is_team, task.id) end,
+        STRINGS.DELETE_BUTTON or "X",
+        { 30, 30 }
+    ))
+    delete_btn:SetPosition(125, 0, 0)
+
+    return item
+end
+
+-- 创建单列下的超宽舒适任务项
+function AtlasBookUI:CreateSingleTaskItem(task, is_team)
+    local item = Widget("single_task_item")
+
+    local checkbox_text = task.completed and (STRINGS.COMPLETED_TASK or "√") or (STRINGS.PENDING_TASK or "")
+    local checkbox = item:AddChild(TEMPLATES.StandardButton(
+        function() self:ToggleTask(is_team, task.id, not task.completed) end,
         checkbox_text,
         { 36, 36 }
     ))
     checkbox:SetPosition(-200, 0, 0)
 
-    -- 2. 任务文字内容（超宽 370 像素，字迹清晰温润，完全不截断）
     local text = item:AddChild(Text(CHATFONT, 22))
     text:SetPosition(0, 0, 0)
     text:SetRegionSize(350, 36)
@@ -223,20 +383,13 @@ function AtlasBookUI:CreateTaskItem(task, is_team)
     text:SetString(task.text or "")
 
     if task.completed then
-        text:SetColour(0.48, 0.48, 0.48, 1) -- 已完成：柔和灰色
+        text:SetColour(0.48, 0.48, 0.48, 1)
     else
-        if is_team then
-            text:SetColour(0.98, 0.90, 0.78, 1) -- 团队目标：暖阳白
-        else
-            text:SetColour(0.88, 0.94, 1.0, 1)  -- 个人计划：晨曦蓝
-        end
+        text:SetColour(is_team and 0.98 or 0.88, is_team and 0.90 or 0.94, is_team and 0.78 or 1.0, 1)
     end
 
-    -- 3. 删除按钮 [ X ] (标准 ASCII 红色 X)
     local delete_btn = item:AddChild(TEMPLATES.StandardButton(
-        function()
-            self:DeleteTask(is_team, task.id)
-        end,
+        function() self:DeleteTask(is_team, task.id) end,
         STRINGS.DELETE_BUTTON or "X",
         { 32, 32 }
     ))
