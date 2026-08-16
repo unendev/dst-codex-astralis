@@ -24,6 +24,8 @@ Assets = {
     Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
 
+RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/atlas_book.xml"), "atlas_book.tex")
+
 -- 1. 基础字符串定义
 STRINGS.NAMES.ATLAS_BOOK = "任务协同看板"
 STRINGS.RECIPE_DESC.ATLAS_BOOK = "任务与协同看板"

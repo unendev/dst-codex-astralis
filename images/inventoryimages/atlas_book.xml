@@ -1,3 +1,6 @@
 <Atlas><Texture filename="atlas_book.tex" />
-    <Elements><Element name="atlas_book.tex" u1="0.0" u2="1.0" v1="0.0" v2="1.0" />
-</Elements></Atlas>
+    <Elements>
+        <Element name="atlas_book.tex" u1="0.0" u2="1.0" v1="0.0" v2="1.0" />
+        <Element name="atlas_book" u1="0.0" u2="1.0" v1="0.0" v2="1.0" />
+    </Elements>
+</Atlas>
