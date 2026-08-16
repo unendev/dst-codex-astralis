@@ -1,6 +1,6 @@
 local assets =
 {
-    Asset("ANIM", "anim/books.zip"),
+    Asset("ANIM", "anim/atlas_book.zip"),
     Asset("ATLAS", "images/inventoryimages/atlas_book.xml"),
     Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
@@ -22,9 +22,9 @@ local function fn()
 
     MakeInventoryPhysics(inst)
 
-    inst.AnimState:SetBank("books")
-    inst.AnimState:SetBuild("books")
-    inst.AnimState:PlayAnimation("book_research_station")
+    inst.AnimState:SetBank("atlas_book")
+    inst.AnimState:SetBuild("atlas_book")
+    inst.AnimState:PlayAnimation("idle")
 
     MakeInventoryFloatable(inst, "med", nil, 0.75)
 

@@ -19,7 +19,7 @@ local table = GLOBAL.table
 PrefabFiles = { "atlas_book" }
 
 Assets = {
-    Asset("ANIM", "anim/books.zip"),
+    Asset("ANIM", "anim/atlas_book.zip"),
     Asset("ATLAS", "images/inventoryimages/atlas_book.xml"),
     Asset("IMAGE", "images/inventoryimages/atlas_book.tex"),
 }
