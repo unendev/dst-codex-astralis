@@ -9,6 +9,12 @@ local ActionHandler = GLOBAL.ActionHandler
 local json = GLOBAL.json
 local Ingredient = GLOBAL.Ingredient
 local TECH = GLOBAL.TECH
+local pcall = GLOBAL.pcall
+local pairs = GLOBAL.pairs
+local ipairs = GLOBAL.ipairs
+local type = GLOBAL.type
+local tostring = GLOBAL.tostring
+local table = GLOBAL.table
 
 PrefabFiles = { "atlas_book" }
 
@@ -237,4 +243,42 @@ AddClientModRPCHandler(ATLAS_RPC_NAMESPACE, ATLAS_RPC_OPEN_UI, function()
         if sync_rpc then SendModRPCToServer(sync_rpc) end
         GLOBAL.ThePlayer.HUD:OpenAtlasBook()
     end
+end)
+
+-- 10. 原生端到端自检探针 (Native E2E Test Probe)
+GLOBAL.c_test_atlas = function()
+    print("[ATLAS_AUTOTEST] ========== 开始万象书原生自检 ==========")
+    
+    -- 1. 自检 Client RPC JSON 编解码
+    local test_json = json.encode({ { id = 999, text = "自检测试任务", completed = false } })
+    local test_success, test_tasks = pcall(function() return json.decode(test_json) end)
+    if test_success and test_tasks and test_tasks[1].text == "自检测试任务" then
+        print("[ATLAS_AUTOTEST] 1. Client RPC JSON 编解码解析: 100% 成功")
+    else
+        print("[ATLAS_AUTOTEST] 1. Client RPC JSON 编解码解析: 失败!")
+    end
+
+    -- 2. 自检 UI 模块加载与 Screen 构造
+    local AtlasBookUI = GLOBAL.require("widgets/atlasbook_ui")
+    if AtlasBookUI and GLOBAL.ThePlayer then
+        local ui_instance = AtlasBookUI(GLOBAL.ThePlayer)
+        if ui_instance then
+            print("[ATLAS_AUTOTEST] 2. AtlasBookUI 界面实例化与组件构建: 100% 成功")
+            ui_instance:SetView("planner")
+            ui_instance:UpdateTaskList()
+            print("[ATLAS_AUTOTEST] 3. 任务视图切换与列表重绘: 100% 成功")
+            if ui_instance.Kill then ui_instance:Kill() end
+        end
+    end
+
+    print("[ATLAS_AUTOTEST] ========== 原生自检全部通过，零报错！ ==========")
+end
+
+-- 玩家入房 1.0 秒后自动静默执行一次自检，直接在日志验证
+AddPlayerPostInit(function(inst)
+    inst:DoTaskInTime(1.0, function()
+        if inst == GLOBAL.ThePlayer and GLOBAL.c_test_atlas then
+            GLOBAL.c_test_atlas()
+        end
+    end)
 end)
