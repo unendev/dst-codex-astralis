@@ -25,6 +25,7 @@ local function fn()
     inst.AnimState:SetBank("atlas_book")
     inst.AnimState:SetBuild("atlas_book")
     inst.AnimState:PlayAnimation("idle")
+    inst.AnimState:SetScale(1.4, 1.4)
 
     MakeInventoryFloatable(inst, "med", nil, 0.75)
 
